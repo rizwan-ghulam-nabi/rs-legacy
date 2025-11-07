@@ -105,3 +105,16 @@
     @apply bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200;
   }
 }
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0) rotate(0deg) scale(0.8);
+  }
+  50% {
+    transform: translateY(-100px) translateX(var(--tw-translate-x)) rotate(180deg) scale(1.2);
+  }
+}
+
+.animate-float {
+  animation: float infinite;
+}

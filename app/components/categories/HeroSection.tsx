@@ -3,16 +3,65 @@
 
 import { motion } from 'framer-motion';
 import { Heart, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export function HeroSection() {
+  const [sparklePositions, setSparklePositions] = useState<Array<{left: number, top: number}>>([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    // Generate random positions only on client side
+    const positions = Array.from({ length: 15 }, () => ({
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+    }));
+    setSparklePositions(positions);
+  }, []);
+
+  if (!isMounted) {
+    // Return static version for SSR
+    return (
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-rose-400/10 via-pink-400/10 to-orange-400/10" />
+        <div className="relative container mx-auto px-4 py-24 lg:py-32">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            <div className="space-y-4">
+              <div className="flex items-center justify-center gap-4 mb-6">
+                <Heart className="text-rose-500" size={48} fill="currentColor" />
+                <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-orange-600 bg-clip-text text-transparent">
+                  Discover
+                </h1>
+              </div>
+              <p className="text-2xl md:text-3xl text-rose-700/90 font-light leading-relaxed">
+                Collections curated with love and care
+              </p>
+            </div>
+            <p className="text-xl text-rose-600/80 max-w-2xl mx-auto leading-relaxed font-light">
+              Find products that bring joy, comfort, and meaning to your everyday life. 
+              Each piece is chosen with intention and love.
+            </p>
+            <div className="flex justify-center gap-6 pt-8">
+              {['🌸', '💫', '✨', '🌿', '💝'].map((emoji, index) => (
+                <span key={index} className="text-2xl">
+                  {emoji}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="relative overflow-hidden">
       {/* Background with soft gradient */}
       <div className="absolute inset-0 bg-gradient-to-r from-rose-400/10 via-pink-400/10 to-orange-400/10" />
       
-      {/* Animated sparkles */}
+      {/* Animated sparkles - only rendered on client */}
       <div className="absolute inset-0 overflow-hidden">
-        {[...Array(15)].map((_, i) => (
+        {sparklePositions.map((position, i) => (
           <motion.div
             key={i}
             className="absolute text-rose-200/40"
@@ -28,8 +77,8 @@ export function HeroSection() {
               repeatDelay: 10
             }}
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              left: `${position.left}%`,
+              top: `${position.top}%`,
             }}
           >
             <Sparkles size={20} />
