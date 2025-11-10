@@ -6,8 +6,8 @@ import { motion } from 'framer-motion';
 
 export default function SimpleGoogleMap() {
   const storeLocation = {
-    lat: 31.4180, // Your latitude
-    lng: 73.0790, // Your longitude
+    lat:31.3807 , // Your latitude
+    lng: 73.0792, // Your longitude
     address: "D-type goal near bilali masjid , faisalabad,pv punjab, country: Pakistan 38000" // Your address
   };
 

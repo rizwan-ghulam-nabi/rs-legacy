@@ -27,7 +27,6 @@ import Link from 'next/link';
 import Header from '../../components/Header';
 
 interface Address {
-  _id?: string;
   id: string;
   type: 'home' | 'work' | 'other';
   firstName: string;
@@ -41,21 +40,38 @@ interface Address {
   zipCode: string;
   country: string;
   isDefault: boolean;
-  userId?: string; // For future user authentication
 }
 
+// Mock data - replace with actual API calls when backend is ready
+const mockAddresses: Address[] = [
+  {
+    id: '1',
+    type: 'home',
+    firstName: 'John',
+    lastName: 'Doe',
+    phone: '+1234567890',
+    email: 'john@example.com',
+    addressLine1: '123 Main Street',
+    addressLine2: 'Apt 4B',
+    city: 'Karachi',
+    state: 'Sindh',
+    zipCode: '75500',
+    country: 'Pakistan',
+    isDefault: true,
+  }
+];
+
 export default function CheckoutAddressPage() {
-  const { state: cartState, updateShippingAddress } = useCart(); // Add updateShippingAddress to your cart context
+  const { state: cartState, updateShippingAddress } = useCart();
   const router = useRouter();
   const [selectedAddress, setSelectedAddress] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
-  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
 
-  // Addresses from MongoDB
-  const [addresses, setAddresses] = useState<Address[]>([]);
+  // Use mock data directly - remove this when you have real backend
+  const [addresses, setAddresses] = useState<Address[]>(mockAddresses);
 
   const [newAddress, setNewAddress] = useState<Omit<Address, 'id' | 'isDefault'>>({
     type: 'home',
@@ -71,12 +87,7 @@ export default function CheckoutAddressPage() {
     country: 'Pakistan'
   });
 
-  // Fetch addresses from MongoDB on component mount
-  useEffect(() => {
-    fetchAddresses();
-  }, []);
-
-  // Set default address when addresses load
+  // Set default address when component mounts
   useEffect(() => {
     const defaultAddress = addresses.find(addr => addr.isDefault);
     if (defaultAddress) {
@@ -85,27 +96,6 @@ export default function CheckoutAddressPage() {
       setSelectedAddress(addresses[0].id);
     }
   }, [addresses]);
-
-  const fetchAddresses = async () => {
-    try {
-      setIsLoadingAddresses(true);
-      const response = await fetch('/api/addresses');
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch addresses');
-      }
-      
-      const data = await response.json();
-      if (data.success) {
-        setAddresses(data.addresses);
-      }
-    } catch (error) {
-      console.error('Error fetching addresses:', error);
-      // You can set some default addresses or show an error message
-    } finally {
-      setIsLoadingAddresses(false);
-    }
-  };
 
   const calculateTotals = () => {
     const subtotal = cartState.items.reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -133,35 +123,43 @@ export default function CheckoutAddressPage() {
     }
   };
 
+  // Simple local storage for addresses (remove when you have real backend)
+  const saveAddressesToStorage = (updatedAddresses: Address[]) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('userAddresses', JSON.stringify(updatedAddresses));
+    }
+  };
+
+  const loadAddressesFromStorage = (): Address[] => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('userAddresses');
+      return stored ? JSON.parse(stored) : mockAddresses;
+    }
+    return mockAddresses;
+  };
+
   const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/addresses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...newAddress,
-          isDefault: addresses.length === 0
-        }),
-      });
+      // Create new address with ID
+      const newAddressWithId: Address = {
+        ...newAddress,
+        id: Date.now().toString(), // Simple ID generation
+        isDefault: addresses.length === 0
+      };
 
-      if (!response.ok) {
-        throw new Error('Failed to save address');
-      }
+      // Update addresses list
+      const updatedAddresses = newAddressWithId.isDefault 
+        ? [...addresses.map(addr => ({ ...addr, isDefault: false })), newAddressWithId]
+        : [...addresses, newAddressWithId];
 
-      const result = await response.json();
-      
-      if (result.success) {
-        // Refresh addresses list
-        await fetchAddresses();
-        setSelectedAddress(result.addressId);
-        setShowAddressForm(false);
-        resetForm();
-      }
+      setAddresses(updatedAddresses);
+      saveAddressesToStorage(updatedAddresses);
+      setSelectedAddress(newAddressWithId.id);
+      setShowAddressForm(false);
+      resetForm();
     } catch (error) {
       console.error('Error adding address:', error);
       alert('Failed to save address. Please try again.');
@@ -177,26 +175,14 @@ export default function CheckoutAddressPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/addresses/${editingAddress._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editingAddress),
-      });
+      const updatedAddresses = addresses.map(addr => 
+        addr.id === editingAddress.id ? editingAddress : addr
+      );
 
-      if (!response.ok) {
-        throw new Error('Failed to update address');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        // Refresh addresses list
-        await fetchAddresses();
-        setIsEditing(false);
-        setEditingAddress(null);
-      }
+      setAddresses(updatedAddresses);
+      saveAddressesToStorage(updatedAddresses);
+      setIsEditing(false);
+      setEditingAddress(null);
     } catch (error) {
       console.error('Error updating address:', error);
       alert('Failed to update address. Please try again.');
@@ -205,7 +191,7 @@ export default function CheckoutAddressPage() {
     }
   };
 
-  const handleDeleteAddress = async (id: string, mongoId?: string) => {
+  const handleDeleteAddress = async (id: string) => {
     if (addresses.length <= 1) {
       alert('You must have at least one address');
       return;
@@ -216,23 +202,13 @@ export default function CheckoutAddressPage() {
     }
 
     try {
-      const response = await fetch(`/api/addresses/${mongoId || id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete address');
-      }
-
-      const result = await response.json();
+      const updatedAddresses = addresses.filter(addr => addr.id !== id);
+      setAddresses(updatedAddresses);
+      saveAddressesToStorage(updatedAddresses);
       
-      if (result.success) {
-        // Refresh addresses list
-        await fetchAddresses();
-        if (selectedAddress === id) {
-          const remainingAddress = addresses.find(addr => addr.id !== id);
-          setSelectedAddress(remainingAddress?.id || '');
-        }
+      if (selectedAddress === id) {
+        const remainingAddress = updatedAddresses[0];
+        setSelectedAddress(remainingAddress?.id || '');
       }
     } catch (error) {
       console.error('Error deleting address:', error);
@@ -242,24 +218,13 @@ export default function CheckoutAddressPage() {
 
   const handleSetDefault = async (id: string) => {
     try {
-      const response = await fetch('/api/addresses/set-default', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ addressId: id }),
-      });
+      const updatedAddresses = addresses.map(addr => ({
+        ...addr,
+        isDefault: addr.id === id
+      }));
 
-      if (!response.ok) {
-        throw new Error('Failed to set default address');
-      }
-
-      const result = await response.json();
-      
-      if (result.success) {
-        // Refresh addresses list
-        await fetchAddresses();
-      }
+      setAddresses(updatedAddresses);
+      saveAddressesToStorage(updatedAddresses);
     } catch (error) {
       console.error('Error setting default address:', error);
       alert('Failed to set default address. Please try again.');
@@ -295,7 +260,7 @@ export default function CheckoutAddressPage() {
       const selectedAddressData = addresses.find(addr => addr.id === selectedAddress);
       
       if (selectedAddressData) {
-        // Store the selected address in cart context or session
+        // Store the selected address in cart context
         if (updateShippingAddress) {
           updateShippingAddress({
             street: selectedAddressData.addressLine1,
@@ -305,7 +270,7 @@ export default function CheckoutAddressPage() {
           });
         }
         
-        // You can also store it in localStorage for persistence
+        // Store in localStorage for persistence
         localStorage.setItem('selectedShippingAddress', JSON.stringify(selectedAddressData));
         
         // Navigate to payment page
@@ -320,7 +285,7 @@ export default function CheckoutAddressPage() {
   };
 
   const startEdit = (address: Address) => {
-    setEditingAddress(address);
+    setEditingAddress({...address});
     setIsEditing(true);
     setShowAddressForm(false);
   };
@@ -337,6 +302,12 @@ export default function CheckoutAddressPage() {
       default: return <MapPin className="w-5 h-5" />;
     }
   };
+
+  // Load addresses from localStorage on component mount
+  useEffect(() => {
+    const storedAddresses = loadAddressesFromStorage();
+    setAddresses(storedAddresses);
+  }, []);
 
   if (cartState.items.length === 0) {
     return (
@@ -417,14 +388,9 @@ export default function CheckoutAddressPage() {
 
               {/* Saved Addresses */}
               <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gray-900">Saved Addresses</h3>
-                  {isLoadingAddresses && (
-                    <div className="text-sm text-gray-500">Loading addresses...</div>
-                  )}
-                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Saved Addresses</h3>
                 
-                {!isLoadingAddresses && addresses.length === 0 ? (
+                {addresses.length === 0 ? (
                   <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-2xl">
                     <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600 mb-4">No addresses saved yet</p>
@@ -509,7 +475,7 @@ export default function CheckoutAddressPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteAddress(address.id, address._id);
+                                handleDeleteAddress(address.id);
                               }}
                               className="text-sm text-red-600 hover:text-red-700 font-medium ml-4 flex items-center gap-1"
                             >
@@ -556,7 +522,6 @@ export default function CheckoutAddressPage() {
                     </h3>
                     <form onSubmit={isEditing ? handleUpdateAddress : handleAddAddress}>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Form fields remain the same as your original code */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Address Type
@@ -617,269 +582,269 @@ export default function CheckoutAddressPage() {
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Email
                           </label>
-                          <input
-                            type="email"
-                            name="email"
-                            value={isEditing ? editingAddress?.email : newAddress.email}
-                            onChange={isEditing ? handleEditInputChange : handleInputChange}
-                            className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
-                            required
-                          />
+                            <input
+                              type="email"
+                              name="email"
+                              value={isEditing ? editingAddress?.email : newAddress.email}
+                              onChange={isEditing ? handleEditInputChange : handleInputChange}
+                              className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                              required
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Address Line 1
+                            </label>
+                            <input
+                              type="text"
+                              name="addressLine1"
+                              value={isEditing ? editingAddress?.addressLine1 : newAddress.addressLine1}
+                              onChange={isEditing ? handleEditInputChange : handleInputChange}
+                              className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                              required
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Address Line 2 (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              name="addressLine2"
+                              value={isEditing ? editingAddress?.addressLine2 : newAddress.addressLine2}
+                              onChange={isEditing ? handleEditInputChange : handleInputChange}
+                              className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              City
+                            </label>
+                            <input
+                              type="text"
+                              name="city"
+                              value={isEditing ? editingAddress?.city : newAddress.city}
+                              onChange={isEditing ? handleEditInputChange : handleInputChange}
+                              className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              State
+                            </label>
+                            <input
+                              type="text"
+                              name="state"
+                              value={isEditing ? editingAddress?.state : newAddress.state}
+                              onChange={isEditing ? handleEditInputChange : handleInputChange}
+                              className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              ZIP Code
+                            </label>
+                            <input
+                              type="text"
+                              name="zipCode"
+                              value={isEditing ? editingAddress?.zipCode : newAddress.zipCode}
+                              onChange={isEditing ? handleEditInputChange : handleInputChange}
+                              className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Country
+                            </label>
+                            <input
+                              type="text"
+                              name="country"
+                              value={isEditing ? editingAddress?.country : newAddress.country}
+                              onChange={isEditing ? handleEditInputChange : handleInputChange}
+                              className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                              required
+                            />
+                          </div>
                         </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Address Line 1
-                          </label>
-                          <input
-                            type="text"
-                            name="addressLine1"
-                            value={isEditing ? editingAddress?.addressLine1 : newAddress.addressLine1}
-                            onChange={isEditing ? handleEditInputChange : handleInputChange}
-                            className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
-                            required
-                          />
+                        <div className="flex gap-3 mt-6">
+                          <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          >
+                            {isLoading ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                {isEditing ? 'Updating...' : 'Saving...'}
+                              </>
+                            ) : (
+                              isEditing ? 'Update Address' : 'Add Address'
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={isEditing ? cancelEdit : () => setShowAddressForm(false)}
+                            disabled={isLoading}
+                            className="border border-gray-300 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
                         </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Address Line 2 (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            name="addressLine2"
-                            value={isEditing ? editingAddress?.addressLine2 : newAddress.addressLine2}
-                            onChange={isEditing ? handleEditInputChange : handleInputChange}
-                            className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            City
-                          </label>
-                          <input
-                            type="text"
-                            name="city"
-                            value={isEditing ? editingAddress?.city : newAddress.city}
-                            onChange={isEditing ? handleEditInputChange : handleInputChange}
-                            className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            State
-                          </label>
-                          <input
-                            type="text"
-                            name="state"
-                            value={isEditing ? editingAddress?.state : newAddress.state}
-                            onChange={isEditing ? handleEditInputChange : handleInputChange}
-                            className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            ZIP Code
-                          </label>
-                          <input
-                            type="text"
-                            name="zipCode"
-                            value={isEditing ? editingAddress?.zipCode : newAddress.zipCode}
-                            onChange={isEditing ? handleEditInputChange : handleInputChange}
-                            className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Country
-                          </label>
-                          <input
-                            type="text"
-                            name="country"
-                            value={isEditing ? editingAddress?.country : newAddress.country}
-                            onChange={isEditing ? handleEditInputChange : handleInputChange}
-                            className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-3 mt-6">
-                        <button
-                          type="submit"
-                          disabled={isLoading}
-                          className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all flex-1 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                          {isLoading ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                              {isEditing ? 'Updating...' : 'Saving...'}
-                            </>
-                          ) : (
-                            isEditing ? 'Update Address' : 'Add Address'
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={isEditing ? cancelEdit : () => setShowAddressForm(false)}
-                          disabled={isLoading}
-                          className="border border-gray-300 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Right Column - Order Summary */}
-            <div className="lg:col-span-1">
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-2xl shadow-lg p-6 sticky top-24"
-              >
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">
-                  Order Summary
-                </h3>
-
-                {/* Pricing Breakdown */}
-                <div className="space-y-4 mb-6">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Subtotal ({cartState.itemCount} items)</span>
-                    <span>Rs. {subtotal.toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-gray-600">
-                    <span>Shipping</span>
-                    <span>
-                      {shippingCost === 0 ? (
-                        <span className="text-green-600 font-semibold">FREE</span>
-                      ) : (
-                        `Rs. ${shippingCost.toFixed(2)}`
-                      )}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between text-gray-600">
-                    <span>Tax</span>
-                    <span>Rs. {tax.toFixed(2)}</span>
-                  </div>
-
-                  {/* Shipping Progress */}
-                  {subtotal < 50 && (
-                    <div className="bg-yellow-50 rounded-lg p-3 mt-4">
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-yellow-800">
-                          Free shipping on orders over Rs. 50
-                        </span>
-                        <span className="font-semibold text-yellow-800">
-                          Rs. {(50 - subtotal).toFixed(2)} away
-                        </span>
-                      </div>
-                      <div className="w-full bg-yellow-200 rounded-full h-2">
-                        <div 
-                          className="bg-yellow-500 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min((subtotal / 50) * 100, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
+                      </form>
+                    </motion.div>
                   )}
+                </AnimatePresence>
+              </div>
 
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between text-lg font-bold text-gray-900">
-                      <span>Total</span>
-                      <span>Rs. {finalTotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Checkout Button */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleContinueToPayment}
-                  disabled={isLoading || !selectedAddress || addresses.length === 0}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-4 rounded-xl font-semibold shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+              {/* Right Column - Order Summary */}
+              <div className="lg:col-span-1">
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-white rounded-2xl shadow-lg p-6 sticky top-24"
                 >
-                  {isLoading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-5 h-5" />
-                      Continue to Payment
-                    </>
-                  )}
-                </motion.button>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">
+                    Order Summary
+                  </h3>
 
-                {/* Security Message */}
-                <div className="flex items-center justify-center gap-2 mt-4 text-sm text-gray-500">
-                  <Shield className="w-4 h-4" />
-                  Secure checkout guaranteed
-                </div>
-
-                {/* Payment Methods */}
-                <div className="mt-6 pt-6 border-t">
-                  <p className="text-sm text-gray-600 mb-3 text-center">
-                    We accept:
-                  </p>
-                  <div className="flex justify-center gap-3">
-                    {['Visa', 'MC', 'JazzCash', 'EasyPaisa'].map((method) => (
-                      <div
-                        key={method}
-                        className="w-12 h-8 bg-gray-100 rounded flex items-center justify-center text-xs font-semibold text-gray-600"
-                      >
-                        {method}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Trust Features */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="grid grid-cols-1 gap-4 mt-6"
-              >
-                {[
-                  { icon: <Shield className="w-5 h-5" />, text: "30-day return policy" },
-                  { icon: <Truck className="w-5 h-5" />, text: "Free shipping over Rs. 50" },
-                  { icon: <Clock className="w-5 h-5" />, text: "Customer support 24/7" },
-                ].map((feature, index) => (
-                  <div
-                    key={feature.text}
-                    className="flex items-center gap-3 text-sm text-gray-600"
-                  >
-                    <div className="text-green-500">
-                      {feature.icon}
+                  {/* Pricing Breakdown */}
+                  <div className="space-y-4 mb-6">
+                    <div className="flex justify-between text-gray-600">
+                      <span>Subtotal ({cartState.itemCount} items)</span>
+                      <span>Rs. {subtotal.toFixed(2)}</span>
                     </div>
-                    {feature.text}
-                  </div>
-                ))}
-              </motion.div>
-            </div>
-          </div>
+                    
+                    <div className="flex justify-between text-gray-600">
+                      <span>Shipping</span>
+                      <span>
+                        {shippingCost === 0 ? (
+                          <span className="text-green-600 font-semibold">FREE</span>
+                        ) : (
+                          `Rs. ${shippingCost.toFixed(2)}`
+                        )}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between text-gray-600">
+                      <span>Tax</span>
+                      <span>Rs. {tax.toFixed(2)}</span>
+                    </div>
 
-          {/* Back to Cart */}
-          <div className="text-center mt-8">
-            <Link
-              href="/cart"
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 font-semibold transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              Back to Cart
-            </Link>
+                    {/* Shipping Progress */}
+                    {subtotal < 50 && (
+                      <div className="bg-yellow-50 rounded-lg p-3 mt-4">
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-yellow-800">
+                            Free shipping on orders over Rs. 50
+                          </span>
+                          <span className="font-semibold text-yellow-800">
+                            Rs. {(50 - subtotal).toFixed(2)} away
+                          </span>
+                        </div>
+                        <div className="w-full bg-yellow-200 rounded-full h-2">
+                          <div 
+                            className="bg-yellow-500 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min((subtotal / 50) * 100, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="border-t pt-4">
+                      <div className="flex justify-between text-lg font-bold text-gray-900">
+                        <span>Total</span>
+                        <span>Rs. {finalTotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Checkout Button */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleContinueToPayment}
+                    disabled={isLoading || !selectedAddress || addresses.length === 0}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-4 rounded-xl font-semibold shadow-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-5 h-5" />
+                        Continue to Payment
+                      </>
+                    )}
+                  </motion.button>
+
+                  {/* Security Message */}
+                  <div className="flex items-center justify-center gap-2 mt-4 text-sm text-gray-500">
+                    <Shield className="w-4 h-4" />
+                    Secure checkout guaranteed
+                  </div>
+
+                  {/* Payment Methods */}
+                  <div className="mt-6 pt-6 border-t">
+                    <p className="text-sm text-gray-600 mb-3 text-center">
+                      We accept:
+                    </p>
+                    <div className="flex justify-center gap-3">
+                      {['Visa', 'MC', 'JazzCash', 'EasyPaisa'].map((method) => (
+                        <div
+                          key={method}
+                          className="w-12 h-8 bg-gray-100 rounded flex items-center justify-center text-xs font-semibold text-gray-600"
+                        >
+                          {method}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Trust Features */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="grid grid-cols-1 gap-4 mt-6"
+                >
+                  {[
+                    { icon: <Shield className="w-5 h-5" />, text: "30-day return policy" },
+                    { icon: <Truck className="w-5 h-5" />, text: "Free shipping over Rs. 50" },
+                    { icon: <Clock className="w-5 h-5" />, text: "Customer support 24/7" },
+                  ].map((feature, index) => (
+                    <div
+                      key={feature.text}
+                      className="flex items-center gap-3 text-sm text-gray-600"
+                    >
+                      <div className="text-green-500">
+                        {feature.icon}
+                      </div>
+                      {feature.text}
+                    </div>
+                  ))}
+                </motion.div>
+              </div>
+            </div>
+
+            {/* Back to Cart */}
+            <div className="text-center mt-8">
+              <Link
+                href="/cart"
+                className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 font-semibold transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                Back to Cart
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
-    </>
-  );
-}
+      </>
+    );
+  }
