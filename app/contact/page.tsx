@@ -50,7 +50,7 @@ export default function ContactPage() {
       icon: <MapPin className="w-6 h-6" />,
       title: "Visit Us",
       description: "Come say hello",
-      details: "123 Commerce St, City, State 12345",
+      details: "D-type colony fsd punjab Pk",
       link: "#map",
       color: "from-orange-500 to-red-500"
     },
@@ -59,7 +59,7 @@ export default function ContactPage() {
     icon: <MapPin className="w-6 h-6" />,
     title: "Visit Us",
     description: "Come say hello",
-    details: "YOUR ACTUAL ADDRESS HERE", // ← Update this
+    details: "D-type colony fsd punjab Pk", // ← Update this
     link: "#map",
     color: "from-orange-500 to-red-500"
   }
@@ -257,3 +257,10 @@ export default function ContactPage() {
     </div>
   );
 }
+
+
+
+
+
+
+

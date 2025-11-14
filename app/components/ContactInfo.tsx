@@ -9,19 +9,19 @@ export default function ContactInfo() {
     {
       icon: <MapPin className="w-6 h-6" />,
       title: "Our Location",
-      details: ["123 Commerce Street", "Suite 100", "New York, NY 10001"],
+      details: ["D-type colony fsd punjab Pk"],
       color: "from-blue-500 to-cyan-500"
     },
     {
       icon: <Phone className="w-6 h-6" />,
       title: "Phone Numbers",
-      details: ["+1 (555) 123-4567", "+1 (555) 987-6543"],
+      details: ["+92-0302-7972606"],
       color: "from-green-500 to-emerald-500"
     },
     {
       icon: <Mail className="w-6 h-6" />,
       title: "Email Addresses",
-      details: ["support@shopnow.com", "sales@shopnow.com"],
+      details: ["sheikhrizwanghulamnabi555@gmail.com"],
       color: "from-purple-500 to-pink-500"
     },
     {

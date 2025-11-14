@@ -76,7 +76,7 @@ const relatedProducts = [
     category: "men",
     rating: 4.3,
     reviews: 67,
-  }
+  },
 ];
 
 // Product content component
@@ -105,7 +105,10 @@ function ProductContent({ params }: { params: Promise<{ id: string }> }) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
             {/* Product Gallery */}
             <div>
-              <ProductGallery images={product.images} />
+              <ProductGallery 
+                images={product.images} 
+                productId={unwrappedParams.id} // Pass the product ID for navigation
+              />
             </div>
 
             {/* Product Info */}

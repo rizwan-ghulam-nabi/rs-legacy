@@ -6,6 +6,7 @@ import Header from './components/Header'
 import Footer from './components/Footer'
 import { WishlistProvider } from './lib/wishlist-context'
 import { AuthProvider } from './lib/auth-context'
+import { OrderProvider } from './lib/order-context'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -33,7 +34,10 @@ export default function RootLayout({
           <CartProvider>
             <WishlistProvider>
             <Header/>
+            <OrderProvider>
           {children}
+            </OrderProvider>
+          
           <Footer/>
             </WishlistProvider>
           </CartProvider>

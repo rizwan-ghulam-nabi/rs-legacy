@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ShoppingCart, Search, User, Menu, X, ChevronDown, Sparkles, Star, Gem, Crown, Zap, Cloud, Clock, LogOut, Settings } from 'lucide-react';
 import { useCart } from '../lib/cart-context';
+import { useAuth } from '../lib/auth-context';
 
 interface UserData {
   id: string;
@@ -87,6 +88,7 @@ export default function Header() {
   const { state } = useCart();
   const pathname = usePathname();
   const router = useRouter();
+  const { user, logout } = useAuth(); // Removed isAdmin and loginAsAdmin
   
   // State
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -98,7 +100,6 @@ export default function Header() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [activeHover, setActiveHover] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
-  const [user, setUser] = useState<UserData | null>(null);
   const [currentTime, setCurrentTime] = useState('');
   const [currentDate, setCurrentDate] = useState('');
   const [isClockHovered, setIsClockHovered] = useState(false);
@@ -142,25 +143,10 @@ export default function Header() {
     const handleScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // User data
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch('/api/users/profile');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) setUser(data.data);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
-    const userTimer = setTimeout(fetchUserData, 100);
-
     return () => {
       clearInterval(timeInterval);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('scroll', handleScroll);
-      clearTimeout(userTimer);
     };
   }, [isClient]);
 
@@ -300,17 +286,14 @@ export default function Header() {
 
   const handleLogout = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/logout', { method: 'POST' });
-      if (response.ok) {
-        setUser(null);
-        setIsUserDropdownOpen(false);
-        closeAllMenus();
-        router.push('/');
-      }
+      logout();
+      setIsUserDropdownOpen(false);
+      closeAllMenus();
+      router.push('/');
     } catch (error) {
       console.error('Logout error:', error);
     }
-  }, [router, closeAllMenus]);
+  }, [router, closeAllMenus, logout]);
 
   const handleNavigation = useCallback((href: string) => {
     closeAllMenus();

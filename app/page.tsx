@@ -1,6 +1,6 @@
 // app/page.tsx
 'use client';
-import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from './components/Header';
 import { 
@@ -12,7 +12,7 @@ import Link from 'next/link';
 import Head from 'next/head';
 import Image from 'next/image';
 
-// Types - Export these for reuse in other projects
+// Types
 export interface Product {
   id: string;
   name: string;
@@ -62,7 +62,7 @@ export interface Stat {
   icon: JSX.Element;
 }
 
-// Constants - Export these for reuse
+// Constants
 export const MOCK_PRODUCTS: Product[] = [
   {
     id: "1",
@@ -208,8 +208,54 @@ export const CATEGORIES: Category[] = [
   { name: 'Books', icon: '📚', href: '/categories/books', color: 'from-indigo-500 to-purple-500' },
 ];
 
-// Reusable Components - Export these for other projects
-export const ProductCard = ({ product, onAddToCart }: { product: Product; onAddToCart: (product: Product) => void }) => (
+// Loading Components
+const SkeletonLoader = () => (
+  <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary-50/30">
+    {/* Header Skeleton */}
+    <div className="h-16 lg:h-20 bg-white border-b border-gray-200 animate-pulse"></div>
+    
+    {/* Hero Carousel Skeleton */}
+    <div className="h-[500px] md:h-[600px] lg:h-[700px] bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse"></div>
+    
+    {/* Stats Section Skeleton */}
+    <section className="py-16 md:py-24 bg-gradient-to-br from-slate-900 via-purple-900 to-blue-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-white/10 rounded-3xl p-6 md:p-8 h-32 animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* Features Skeleton */}
+    <section className="py-12 md:py-16 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="bg-gray-200 rounded-2xl p-6 md:p-8 h-48 animate-pulse"></div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    {/* Featured Products Skeleton */}
+    <section className="py-16 md:py-24 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex gap-8 overflow-hidden">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="flex-shrink-0 w-80 lg:w-96">
+              <div className="bg-gradient-to-br from-gray-200 to-gray-300 rounded-3xl p-8 h-96 animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  </div>
+);
+
+// Optimized ProductCard Component
+export const ProductCard = React.memo(({ product, onAddToCart }: { product: Product; onAddToCart: (product: Product) => void }) => (
   <motion.div
     initial={{ opacity: 0, y: 50, scale: 0.9 }}
     whileInView={{ opacity: 1, y: 0, scale: 1 }}
@@ -219,9 +265,9 @@ export const ProductCard = ({ product, onAddToCart }: { product: Product; onAddT
       transition: { duration: 0.4, type: "spring", stiffness: 300 }
     }}
     transition={{ duration: 0.6 }}
-    className="relative group"
+    className="relative group flex-shrink-0 w-80 lg:w-96"
   >
-    <div className="relative bg-white rounded-3xl overflow-hidden shadow-2xl shadow-gray-200/50 border border-gray-100">
+    <div className="relative bg-white rounded-3xl overflow-hidden shadow-2xl shadow-gray-200/50 border border-gray-100 h-full">
       <div className="absolute top-4 left-4 z-20">
         <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg flex items-center gap-1">
           <Sparkles className="w-3 h-3" />
@@ -236,6 +282,8 @@ export const ProductCard = ({ product, onAddToCart }: { product: Product; onAddT
           width={400}
           height={400}
           className="w-full h-64 md:h-80 object-cover transition-transform duration-700 group-hover:scale-105"
+          priority={false}
+          loading="lazy"
         />
         
         <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -313,9 +361,106 @@ export const ProductCard = ({ product, onAddToCart }: { product: Product; onAddT
       </div>
     </div>
   </motion.div>
-);
+));
 
-export const StatsSection = ({ 
+// Horizontal Scroll Container Component
+const HorizontalScrollContainer = ({ 
+  children, 
+  className = "" 
+}: { 
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+
+  const checkScrollPosition = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    setShowLeftArrow(scrollLeft > 0);
+    setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10);
+  }, []);
+
+  const scroll = useCallback((direction: 'left' | 'right') => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const scrollAmount = 400;
+    const newScrollLeft = direction === 'left' 
+      ? container.scrollLeft - scrollAmount
+      : container.scrollLeft + scrollAmount;
+
+    container.scrollTo({
+      left: newScrollLeft,
+      behavior: 'smooth'
+    });
+  }, []);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', checkScrollPosition);
+    checkScrollPosition();
+
+    return () => {
+      container.removeEventListener('scroll', checkScrollPosition);
+    };
+  }, [checkScrollPosition]);
+
+  return (
+    <div className="relative">
+      {/* Left Arrow */}
+      <button
+        onClick={() => scroll('left')}
+        className={`absolute left-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-2xl hover:scale-110 transition-all duration-300 ${
+          showLeftArrow ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        aria-label="Scroll left"
+      >
+        <ChevronLeft className="w-5 h-5 text-gray-700" />
+      </button>
+
+      {/* Scroll Container */}
+      <div
+        ref={scrollContainerRef}
+        className={`flex gap-6 md:gap-8 overflow-x-auto scrollbar-hide snap-x snap-mandatory ${className}`}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        {children}
+      </div>
+
+      {/* Right Arrow */}
+      <button
+        onClick={() => scroll('right')}
+        className={`absolute right-4 top-1/2 transform -translate-y-1/2 z-20 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-2xl hover:scale-110 transition-all duration-300 ${
+          showRightArrow ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        aria-label="Scroll right"
+      >
+        <ChevronRight className="w-5 h-5 text-gray-700" />
+      </button>
+
+      {/* Custom scrollbar indicator */}
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
+        <div className="w-20 h-1 bg-gray-200 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-purple-600 to-pink-600 rounded-full transition-transform duration-300"
+            style={{
+              transform: `scaleX(${showLeftArrow ? 0.5 : showRightArrow ? 1 : 0.8})`
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Stats Section Component
+export const StatsSection = React.memo(({ 
   stats, 
   title = "Numbers That Speak",
   description = "Witness our growth in real-time with live statistics that never stop amazing"
@@ -448,7 +593,7 @@ export const StatsSection = ({
       </motion.div>
     </div>
   </section>
-);
+));
 
 // Main Component
 export default function Home() {
@@ -503,10 +648,11 @@ export default function Home() {
   // Optimized handlers
   const fetchProducts = useCallback(async () => {
     try {
+      // Simulate API call
       setTimeout(() => {
         setProducts(MOCK_PRODUCTS);
         setLoading(false);
-      }, 1000);
+      }, 2000); // Increased timeout to show loading state better
     } catch (error) {
       console.error('Failed to fetch products:', error);
       setProducts(MOCK_PRODUCTS);
@@ -529,15 +675,15 @@ export default function Home() {
 
   // Auto slide
   useEffect(() => {
-    if (isHovering || !isClient) return;
+    if (isHovering || !isClient || loading) return;
     
     const interval = setInterval(nextSlide, 5000);
     return () => clearInterval(interval);
-  }, [isHovering, isClient, nextSlide]);
+  }, [isHovering, isClient, nextSlide, loading]);
 
   // Stats animation
   useEffect(() => {
-    if (!isClient) return;
+    if (!isClient || loading) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -560,7 +706,7 @@ export default function Home() {
         observer.unobserve(statsRef.current);
       }
     };
-  }, [hasAnimated, isClient]);
+  }, [hasAnimated, isClient, loading]);
 
   const animateStats = useCallback(() => {
     const targetValues = { customers: 10000, products: 500, categories: 50 };
@@ -607,6 +753,11 @@ export default function Home() {
     console.log('Added to cart:', product.name);
     alert(`Added ${product.name} to cart!`);
   }, []);
+
+  // Show loading state
+  if (loading) {
+    return <SkeletonLoader />;
+  }
 
   return (
     <>
@@ -810,7 +961,7 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Featured Products */}
+          {/* Featured Products with Horizontal Scroll */}
           <section className="relative py-16 md:py-24 bg-gradient-to-br from-gray-50 via-white to-purple-50/50 overflow-hidden">
             <div className="absolute top-0 left-0 w-72 h-72 bg-gradient-to-r from-purple-200 to-pink-200 rounded-full blur-3xl opacity-30 -translate-x-1/2 -translate-y-1/2"></div>
             <div className="absolute bottom-0 right-0 w-96 h-96 bg-gradient-to-r from-blue-200 to-cyan-200 rounded-full blur-3xl opacity-30 translate-x-1/2 translate-y-1/2"></div>
@@ -840,31 +991,15 @@ export default function Home() {
                 </p>
               </motion.div>
 
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                  {[...Array(4)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 30 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, delay: i * 0.1 }}
-                      className="relative"
-                    >
-                      <div className="bg-gradient-to-br from-gray-200 to-gray-300 rounded-3xl p-8 animate-pulse h-96"></div>
-                    </motion.div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                  {products.map((product, index) => (
-                    <ProductCard 
-                      key={product.id} 
-                      product={product} 
-                      onAddToCart={handleAddToCart}
-                    />
-                  ))}
-                </div>
-              )}
+              <HorizontalScrollContainer className="py-4 px-2">
+                {products.map((product, index) => (
+                  <ProductCard 
+                    key={product.id} 
+                    product={product} 
+                    onAddToCart={handleAddToCart}
+                  />
+                ))}
+              </HorizontalScrollContainer>
 
               <motion.div
                 initial={{ opacity: 0, y: 30 }}

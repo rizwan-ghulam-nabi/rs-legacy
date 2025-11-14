@@ -21,6 +21,9 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Header from '../../components/Header';
+import { useOrder } from '@/app/lib/order-context';
+import { Order} from '../../types/order';
+// import { PaymentMethod } from '../../types/order';
 
 interface PaymentMethod {
   id: string;
@@ -41,11 +44,13 @@ interface OrderSummary {
 export default function PaymentPage() {
   const { state: cartState } = useCart();
   const router = useRouter();
-  const [selectedMethod, setSelectedMethod] = useState<string>('jazzcash');
+  const [selectedMethod, setSelectedMethod] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [orderId, setOrderId] = useState<string>('');
 
+
+  const {addOrder} = useOrder()
   // Mock order data - in real app, this would come from API
   const [orderSummary, setOrderSummary] = useState<OrderSummary>({
     subtotal: 0,
@@ -59,7 +64,7 @@ export default function PaymentPage() {
   const [jazzCashForm, setJazzCashForm] = useState({
     phoneNumber: '',
     email: '',
-    cnic: ''
+    CNIC: ''
   });
 
   // Card payment form state
@@ -70,7 +75,7 @@ export default function PaymentPage() {
     cardHolder: ''
   });
 
-  const paymentMethods: PaymentMethod[] = [
+  const paymentMethods:PaymentMethod[] = [
     {
       id: 'jazzcash',
       name: 'JazzCash',
@@ -191,34 +196,98 @@ export default function PaymentPage() {
     setIsProcessing(true);
 
     try {
-      // Simulate payment processing
-      const paymentSuccess = await simulateJazzCashPayment();
+    //   // Simulate payment processing
+    //   const paymentSuccess = await simulateJazzCashPayment();
 
-      if (paymentSuccess) {
-        // Generate order ID
-        const newOrderId = `ORD-${Date.now().toString().slice(-8)}`;
-        setOrderId(newOrderId);
-        setIsSuccess(true);
+    //   if (paymentSuccess) {
+    //     // Generate order ID
+    //     const newOrderId = `ORD-${Date.now().toString().slice(-8)}`;
+    //     setOrderId(newOrderId);
+    //     setIsSuccess(true);
         
-        // In real app, you would:
-        // 1. Send order to backend
-        // 2. Clear cart
-        // 3. Redirect to order confirmation
-      } else {
-        alert('Payment failed. Please try again or use a different payment method.');
-      }
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert('An error occurred during payment. Please try again.');
-    } finally {
-      setIsProcessing(false);
+    //     // In real app, you would:
+    //     // 1. Send order to backend
+    //     // 2. Clear cart
+    //     // 3. Redirect to order confirmation
+    //   } else {
+    //     alert('Payment failed. Please try again or use a different payment method.');
+    //   }
+    // } catch (error) {
+    //   console.error('Payment error:', error);
+    //   alert('An error occurred during payment. Please try again.');
+    // } finally {
+    //   setIsProcessing(false);
+    // }
+
+    const paymentSuccess = await simulateJazzCashPayment();
+
+    if (paymentSuccess) {
+      const newOrderId = `ORD-${Date.now().toString().slice(-8)}`;
+      setOrderId(newOrderId);
+      
+      // Create real order object
+      const realOrder:Order = {
+        id: newOrderId,
+        orderNumber: newOrderId,
+        date: new Date().toISOString(),
+        status: 'pending',
+        total: orderSummary.total,
+        subtotal: orderSummary.subtotal,
+        shipping: orderSummary.shipping,
+        tax: orderSummary.tax,
+        items: cartState.items.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image,
+          // size: item.size,
+          // color: item.color
+        })),
+        shippingAddress: {
+          // You should get this from your address form or context
+          name: 'John Doe',
+          street: '123 Main Street',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          country: 'USA',
+          phone: '+1 (555) 123-4567',
+          email: 'john.doe@example.com'
+        },
+       paymentMethod: {
+          type: selectedMethod,
+          ...(selectedMethod === 'card' ? { lastFour: cardForm.cardNumber.slice(-4) } : {}),
+          brand: selectedMethod
+        }
+      };
+
+      // Save the real order
+      addOrder(realOrder);
+      
+      setIsSuccess(true);
+      
+      // Clear cart after successful payment
+      // dispatch({ type: 'CLEAR_CART' });
+      
+    } else {
+      alert('Payment failed. Please try again or use a different payment method.');
     }
+  } catch (error) {
+    console.error('Payment error:', error);
+    alert('An error occurred during payment. Please try again.');
+  } finally {
+    setIsProcessing(false);
+  }
+
+
   };
 
-  const handleViewOrder = () => {
-    // Redirect to order confirmation page
-    router.push(`/order-confirmation/${orderId}`);
-  };
+  // In your payment page (app/checkout/payment/page.tsx)
+const handleViewOrder = () => {
+  // Redirect to order details page
+  router.push(`/order/${orderId}`);
+};
 
   const handleContinueShopping = () => {
     router.push('/Product');
@@ -485,7 +554,7 @@ export default function PaymentPage() {
                           <input
                           type="text"
                           name="cnic"
-                          value={jazzCashForm.cnic}
+                          value={jazzCashForm.CNIC}
                           onChange={handleJazzCashInputChange}
                           placeholder="XXXXX-XXXXXXX-X"
                           className="w-full rounded-xl border border-gray-300 px-4 py-3 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"

@@ -457,7 +457,7 @@ export default function CartPage() {
                         <div className="flex justify-end mt-3">
                           <button className="flex items-center gap-2 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors duration-300 text-sm">
                             <Heart className="w-4 h-4" />
-                            Save for later
+                            <Link href={"/wishlist"} >Save for later</Link>
                           </button>
                         </div>
                       </div>

@@ -17,7 +17,8 @@ export interface Product {
   colors?: string[];
   sizes?: string[];
   image?:string,
-  reviews:number
+  reviews:number,
+
 }
 
 export interface Review {
