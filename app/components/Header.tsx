@@ -93,7 +93,7 @@ const NAVIGATION_ITEMS = [
   },
   { 
     name: 'Products', 
-    href: '/products', 
+    href: '/Product', 
     icon: Gem,
     description: 'Discover excellence'
   },

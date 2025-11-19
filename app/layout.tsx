@@ -11,7 +11,7 @@ import { OrderProvider } from './lib/order-context'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'ShopNow - Modern E-Commerce Platform',
+  title: 'RS-Legacy - Modern E-Commerce Platform',
   description: 'Discover amazing products at unbeatable prices. Quality guaranteed with fast shipping and excellent customer service.',
   keywords: 'e-commerce, shopping, products, electronics, clothing, sports',
 }

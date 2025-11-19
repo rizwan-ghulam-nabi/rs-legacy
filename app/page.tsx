@@ -11,6 +11,7 @@ import {
 import Link from 'next/link';
 import Head from 'next/head';
 import Image from 'next/image';
+import { useCart } from './lib/cart-context';
 
 // Types
 export interface Product {
@@ -333,11 +334,11 @@ export const ProductCard = React.memo(({ product, onAddToCart }: { product: Prod
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-bold text-gray-900">
-              {product.price}
+              ${product.price}
             </span>
             {product.originalPrice && product.originalPrice > product.price && (
               <span className="text-sm text-gray-500 line-through">
-                {product.originalPrice}
+                ${product.originalPrice}
               </span>
             )}
           </div>
@@ -610,6 +611,9 @@ export default function Home() {
   const statsRef = useRef<HTMLDivElement>(null);
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  
+  // Add cart functionality
+  const { addToCart } = useCart();
 
   // Initialize
   useEffect(() => {
@@ -749,10 +753,26 @@ export default function Home() {
     }, 3000);
   }, []);
 
+  // ADD TO CART FUNCTIONALITY - IMPLEMENTED
   const handleAddToCart = useCallback((product: Product) => {
-    console.log('Added to cart:', product.name);
-    alert(`Added ${product.name} to cart!`);
-  }, []);
+    // Convert to cart item format
+    const cartItem = {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.images[0],
+      currency: 'USD',
+      category: product.category
+    };
+    
+    addToCart(cartItem);
+    
+    // Show success message
+    // console.log(`Added ${product.name} to cart!`);
+    
+    // You can also show a toast notification here
+    // alert(`Added ${product.name} to cart!`);
+  }, [addToCart]);
 
   // Show loading state
   if (loading) {
@@ -996,7 +1016,7 @@ export default function Home() {
                   <ProductCard 
                     key={product.id} 
                     product={product} 
-                    onAddToCart={handleAddToCart}
+                    onAddToCart={handleAddToCart} // Pass the handleAddToCart function
                   />
                 ))}
               </HorizontalScrollContainer>
@@ -1085,5 +1105,3 @@ export default function Home() {
     </>
   );
 }
-
-
