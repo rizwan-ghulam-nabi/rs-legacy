@@ -56,6 +56,33 @@ export interface Category {
   color: string;
 }
 
+export interface VideoProperties {
+  url: string;
+  autoplay?: boolean;
+  loop?: boolean;
+  muted?: boolean;
+  controls?: boolean;
+  playsInline?: boolean;
+}
+
+// Or extend the CarouselSlide interface for more detailed video handling:
+export interface CarouselSlide {
+  id: number;
+  image: string;          // Left side image
+  rightType: 'video' | 'image';
+  right: string;          // URL
+  title: string;
+  subtitle: string;
+  gradient: string;
+  videoProps?: {         // Optional video-specific properties
+    autoplay?: boolean;
+    loop?: boolean;
+    muted?: boolean;
+    controls?: boolean;
+    playsInline?: boolean;
+  };
+}
+
 export interface Stat {
   number: string;
   label: string;
@@ -146,7 +173,9 @@ export const MOCK_PRODUCTS: Product[] = [
 export const CAROUSEL_SLIDES: CarouselSlide[] = [
   {
     id: 1,
-    image: "/images/img6.jpg",
+    image: "/images/img6.jpg",           // LEFT SIDE IMAGE
+    rightType: "video",                  // "video" | "image"
+    right: "/videos/demo1.mp4",          // RIGHT SIDE VIDEO
     title: "Summer Collection",
     subtitle: "New Arrivals",
     gradient: "from-blue-500/20 to-cyan-500/20"
@@ -154,6 +183,8 @@ export const CAROUSEL_SLIDES: CarouselSlide[] = [
   {
     id: 2,
     image: "/images/img2.jpg",
+    rightType: "image",
+    right: "/videos/demo2.mp4",
     title: "Electronics Sale",
     subtitle: "Up to 50% Off",
     gradient: "from-purple-500/20 to-pink-500/20"
@@ -161,6 +192,8 @@ export const CAROUSEL_SLIDES: CarouselSlide[] = [
   {
     id: 3,
     image: "/images/img3.jpg",
+    rightType: "video",
+    right: "/videos/demo3.mp4",
     title: "Home & Living",
     subtitle: "Modern Designs",
     gradient: "from-green-500/20 to-emerald-500/20"
@@ -168,6 +201,8 @@ export const CAROUSEL_SLIDES: CarouselSlide[] = [
   {
     id: 4,
     image: "/images/img4.jpg",
+    rightType: "image",
+    right: "/images/img8.jpg",
     title: "Premium Accessories",
     subtitle: "Limited Edition",
     gradient: "from-orange-500/20 to-red-500/20"
@@ -178,7 +213,7 @@ export const FEATURES: Feature[] = [
   {
     icon: <Truck className="w-6 h-6 md:w-8 md:h-8" />,
     title: "Free Shipping",
-    description: "Free shipping on all orders over $50",
+    description: "Free shipping on all orders over 1000rs",
     gradient: "from-blue-500 to-cyan-500"
   },
   {
@@ -202,11 +237,11 @@ export const FEATURES: Feature[] = [
 ];
 
 export const CATEGORIES: Category[] = [
-  { name: 'Electronics', icon: '📱', href: '/categories/electronics', color: 'from-blue-500 to-cyan-500' },
-  { name: 'Clothing', icon: '👕', href: '/categories/clothing', color: 'from-purple-500 to-pink-500' },
-  { name: 'Home & Garden', icon: '🏠', href: '/categories/home-garden', color: 'from-green-500 to-emerald-500' },
-  { name: 'Sports', icon: '⚽', href: '/categories/sports', color: 'from-orange-500 to-red-500' },
-  { name: 'Books', icon: '📚', href: '/categories/books', color: 'from-indigo-500 to-purple-500' },
+  { name: 'Electronics', icon: '📱', href: '/categories/', color: 'from-blue-500 to-cyan-500' },
+  { name: 'Clothing', icon: '👕', href: '/categories/', color: 'from-purple-500 to-pink-500' },
+  { name: 'Home & Garden', icon: '🏠', href: '/categories/', color: 'from-green-500 to-emerald-500' },
+  { name: 'Sports', icon: '⚽', href: '/categories/', color: 'from-orange-500 to-red-500' },
+  { name: 'Books', icon: '📚', href: '/categories/', color: 'from-indigo-500 to-purple-500' },
 ];
 
 // Loading Components
@@ -761,7 +796,7 @@ export default function Home() {
       name: product.name,
       price: product.price,
       image: product.images[0],
-      currency: 'USD',
+      currency: 'PKR',
       category: product.category
     };
     
@@ -782,10 +817,10 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>ShopNow - Your Ultimate Online Shopping Destination</title>
+        <title>RS-Legacy - Your Ultimate Online Shopping Destination</title>
         <meta 
           name="description" 
-          content="Discover amazing products at unbeatable prices on ShopNow. Free shipping on orders over $50, secure payments, 24/7 customer support, and 30-day quality guarantee." 
+          content="Discover amazing products at unbeatable prices on RS-Legacy. Free shipping on orders over 1000rs, secure payments, 24/7 customer support, and 30-day quality guarantee." 
         />
         <meta name="keywords" content="online shopping, e-commerce, electronics, clothing, home goods, fashion, deals, discounts" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -940,7 +975,7 @@ export default function Home() {
                   transition={{ duration: 0.6 }}
                   className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4"
                 >
-                  Why Choose <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">ShopNow</span>?
+                  Why Choose <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">RS-Legacy</span>?
                 </motion.h2>
                 <motion.p
                   initial={{ opacity: 0, y: 30 }}
@@ -1028,50 +1063,13 @@ export default function Home() {
                 className="text-center mt-12"
               >
                 <Link 
-                  href="/products" 
+                  href="/Product" 
                   className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-2xl font-bold shadow-2xl shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300 transform hover:scale-105 group"
                 >
                   <span>View All Products</span>
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
                 </Link>
               </motion.div>
-            </div>
-          </section>
-
-          {/* Categories */}
-          <section className="py-12 md:py-16 bg-gradient-to-br from-primary-50 to-purple-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-8 md:mb-16 px-2">
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-4">
-                  Shop by Category
-                </h2>
-                <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
-                  Explore our wide range of categories to find exactly what you need
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6">
-                {CATEGORIES.map((category, index) => (
-                  <motion.div
-                    key={category.name}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.05, y: -5 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <Link
-                      href={category.href}
-                      className="block card p-3 sm:p-4 md:p-6 text-center hover:scale-105 transition-all duration-300 group bg-white rounded-2xl shadow-lg shadow-gray-200/50 hover:shadow-xl hover:shadow-purple-200/50 border border-gray-100"
-                    >
-                      <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-gradient-to-r ${category.color} rounded-xl sm:rounded-2xl flex items-center justify-center text-lg sm:text-xl md:text-2xl mx-auto mb-2 sm:mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
-                        {category.icon}
-                      </div>
-                      <h3 className="font-bold text-gray-900 text-sm sm:text-base md:text-lg">{category.name}</h3>
-                      <p className="text-gray-600 text-xs sm:text-sm mt-1">Explore now</p>
-                    </Link>
-                  </motion.div>
-                ))}
-              </div>
             </div>
           </section>
 

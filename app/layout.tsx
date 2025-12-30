@@ -4,7 +4,7 @@ import { Inter } from 'next/font/google'
 import { CartProvider } from './lib/cart-context'
 import Header from './components/Header'
 import Footer from './components/Footer'
-import { WishlistProvider } from './lib/wishlist-context'
+
 import { AuthProvider } from './lib/auth-context'
 import { OrderProvider } from './lib/order-context'
 
@@ -32,14 +32,13 @@ export default function RootLayout({
         <div className="min-h-screen bg-gray-50">
           <AuthProvider>
           <CartProvider>
-            <WishlistProvider>
+          
             <Header/>
             <OrderProvider>
           {children}
             </OrderProvider>
-          
+
           <Footer/>
-            </WishlistProvider>
           </CartProvider>
           </AuthProvider>
         </div>

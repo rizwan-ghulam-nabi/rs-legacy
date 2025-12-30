@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 
 // Currency conversion utility
 const USD_TO_PKR = 280;
-const FREE_SHIPPING_THRESHOLD = 14000; // Rs 14,000 (equivalent to $50)
+const FREE_SHIPPING_THRESHOLD = 2000; // Rs 14,000 (equivalent to $50)
 
 const convertToPKR = (usdPrice: number): number => {
   return Math.round(usdPrice * USD_TO_PKR);
@@ -114,28 +114,92 @@ export default function CartPage() {
     console.log("Is authenticated:", isAuthenticated);
   }, [state, validItems, itemCount, total, isAuthenticated]);
 
-  const handleCheckout = async () => {
-    if (!isAuthenticated) {
-      alert("Please login to proceed with checkout");
-      return;
-    }
+  // const handleCheckout = async () => {
+  //   if (!isAuthenticated) {
+  //     alert("Please login to proceed with checkout");
+  //     return;
+  //   }
 
-    if (validItems.length === 0) {
-      alert("Your cart is empty");
-      return;
-    }
+  //   if (validItems.length === 0) {
+  //     alert("Your cart is empty");
+  //     return;
+  //   }
     
-    setIsCheckingOut(true);
+  //   setIsCheckingOut(true);
     
+  //   try {
+  //     // Simulate processing delay
+  //     await new Promise(resolve => setTimeout(resolve, 1000));
+      
+  //     // Store cart data in sessionStorage for the checkout process
+  //     // BUT DON'T CLEAR THE CART HERE - only after payment success
+  //     const checkoutData = {
+  //       items: validItems,
+  //       total: finalTotal,
+  //       itemCount: itemCount,
+  //       timestamp: new Date().toISOString()
+  //     };
+      
+  //     sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData));
+  //     sessionStorage.setItem('pendingCartClear', 'true'); // Flag to clear cart later
+      
+  //     console.log("Redirecting to address page with valid items:", validItems);
+      
+  //     // Redirect to address page WITHOUT clearing cart
+  //     router.push("/checkout/address");
+      
+  //   } catch (error) {
+  //     console.error("Checkout error:", error);
+  //     alert("There was an error processing your checkout. Please try again.");
+  //   } finally {
+  //     setIsCheckingOut(false);
+  //   }
+  // };
+
+  // app/cart/page.tsx - UPDATED handleCheckout function
+const handleCheckout = async () => {
+  if (!isAuthenticated) {
+    alert("Please login to proceed with checkout");
+    return;
+  }
+
+  if (validItems.length === 0) {
+    alert("Your cart is empty");
+    return;
+  }
+  
+  setIsCheckingOut(true);
+  
+  try {
     // Simulate processing delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Redirect to address page
+    // Store cart data in sessionStorage for the checkout process
+    const checkoutData = {
+      items: validItems,
+      total: finalTotal,
+      itemCount: itemCount,
+      timestamp: new Date().toISOString()
+    };
+    
+    sessionStorage.setItem('checkoutData', JSON.stringify(checkoutData));
+    
     console.log("Redirecting to address page with valid items:", validItems);
+    
+    // IMPORTANT: DO NOT clear cart here - only redirect
     router.push("/checkout/address");
     
+  } catch (error) {
+    console.error("Checkout error:", error);
+    alert("There was an error processing your checkout. Please try again.");
+  } finally {
     setIsCheckingOut(false);
-  };
+  }
+};
+
+
+
+
 
   const handleQuantityChange = (id: string, newQuantity: number) => {
     if (newQuantity === 0) {

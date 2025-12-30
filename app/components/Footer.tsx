@@ -41,7 +41,7 @@ const Footer = () => {
     { 
       icon: <Truck className="w-5 h-5" />, 
       text: "Free Shipping", 
-      subtext: "On orders over $50",
+      subtext: "On orders over 1000 RS",
       gradient: "from-blue-400 to-cyan-400"
     },
     { 
@@ -70,20 +70,21 @@ const Footer = () => {
     },
   ];
 
-  const shopLinks = [
-    { name: "New Arrivals", href: "/Product" },
-    { name: "Best Sellers", href: "/Product" },
-    { name: "Sale Items", href: "/Product" },
-    { name: "Gift Cards", href: "/Product" },
-    { name: "LookBook", href: "/Product" },
-  ];
+ // Update your shopLinks in footer.tsx
+const shopLinks = [
+  { name: "New Arrivals", href: "/Product?category=new-arrivals" },
+  { name: "Best Sellers", href: "/Product?category=best-sellers" },
+  { name: "Sale Items", href: "/Product?category=sale" },
+  { name: "Gift Cards", href: "/gift-cards" },
+  // { name: "LookBook", href: "/Product" },
+];
 
   const companyLinks = [
     { name: "About Us", href: "/about" },
     { name: "Careers", href: "/careers" },
     { name: "Press", href: "/press" },
     { name: "Sustainability", href: "/sustainability" },
-    { name: "Affiliate Program", href: "/affiliate" },
+    // { name: "Affiliate Program", href: "/affiliate" },
   ];
 
   const supportLinks = [
@@ -279,9 +280,9 @@ const Footer = () => {
               transition={{ delay: 0.4 }}
             >
               {[
-                { icon: Phone, text: "+1 (555) 123-4567" },
-                { icon: Mail, text: "art@stylehub.com" },
-                { icon: MapPin, text: "123 Fashion Ave, Art District, NY" }
+                { icon: Phone, text: "+92 302-7972606" },
+                { icon: Mail, text: "rs-legacy@gmail.com" },
+                { icon: MapPin, text: "D-type colony fsd punjab Pk" }
               ].map((item, index) => (
                 <motion.div
                   key={item.text}

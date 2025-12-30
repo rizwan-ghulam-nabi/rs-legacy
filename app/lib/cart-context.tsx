@@ -363,8 +363,15 @@ interface CartContextType {
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
+  getTotalItems: () => number;
+  getTotalPrice: () => number;
+  isInCart: (id: string) => boolean;
+  getItemQuantity: (id: string) => number;
+  updateShippingAddress: (address: { street: string; city: string; state: string; zip: string }) => void;
+  
 }
 
+// FIX: Make sure CartContext is properly created
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
@@ -389,10 +396,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [state.items]);
 
   const addToCart = (product: Omit<CartItem, 'quantity'>) => {
-    dispatch({ 
-      type: 'ADD_TO_CART', 
-      payload: { ...product }
-    });
+    const existingItem = state.items.find(item => item.id === product.id);
+    
+    if (existingItem) {
+      // If item exists, increase quantity
+      updateQuantity(product.id, existingItem.quantity + 1);
+    } else {
+      // If new item, add with quantity 1
+      dispatch({ 
+        type: 'ADD_TO_CART', 
+        payload: { ...product }
+      });
+    }
   };
 
   const removeFromCart = (id: string) => {
@@ -407,12 +422,41 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'CLEAR_CART' });
   };
 
+  const getTotalItems = () => {
+    return state.itemCount;
+  };
+
+  const getTotalPrice = () => {
+    return state.total;
+  };
+
+  const isInCart = (id: string) => {
+    return state.items.some(item => item.id === id);
+  };
+
+  const getItemQuantity = (id: string) => {
+    const item = state.items.find(item => item.id === id);
+    return item ? item.quantity : 0;
+  };
   const value: CartContextType = {
     state,
     addToCart,
     removeFromCart,
     updateQuantity,
     clearCart,
+    getTotalItems,
+    getTotalPrice,
+    isInCart,
+    getItemQuantity,
+   
+  
+    updateShippingAddress: (address: { street: string; city: string; state: string; zip: string }) => {
+      try {
+        localStorage.setItem('shippingAddress', JSON.stringify(address));
+      } catch (error) {
+        console.error('Failed to save shipping address to localStorage:', error);
+      }
+    },
   };
   
   return (
@@ -421,6 +465,63 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     </CartContext.Provider>
   );
 };
+
+// const CartContext = createContext<CartContextType | undefined>(undefined);
+
+// export function CartProvider({ children }: { children: React.ReactNode }) {
+//   const [state, dispatch] = useReducer(cartReducer, initialState);
+
+//   // Load cart from localStorage on mount
+//   useEffect(() => {
+//     const savedCart = localStorage.getItem('cart');
+//     if (savedCart) {
+//       try {
+//         const cartItems = JSON.parse(savedCart);
+//         dispatch({ type: 'LOAD_CART', payload: cartItems });
+//       } catch (error) {
+//         console.error('Failed to load cart from localStorage:', error);
+//       }
+//     }
+//   }, []);
+
+//   // Save cart to localStorage whenever it changes
+//   useEffect(() => {
+//     localStorage.setItem('cart', JSON.stringify(state.items));
+//   }, [state.items]);
+
+//   const addToCart = (product: Omit<CartItem, 'quantity'>) => {
+//     dispatch({ 
+//       type: 'ADD_TO_CART', 
+//       payload: { ...product }
+//     });
+//   };
+
+//   const removeFromCart = (id: string) => {
+//     dispatch({ type: 'REMOVE_FROM_CART', payload: id });
+//   };
+
+//   const updateQuantity = (id: string, quantity: number) => {
+//     dispatch({ type: 'UPDATE_QUANTITY', payload: { id, quantity } });
+//   };
+
+//   const clearCart = () => {
+//     dispatch({ type: 'CLEAR_CART' });
+//   };
+
+//   const value: CartContextType = {
+//     state,
+//     addToCart,
+//     removeFromCart,
+//     updateQuantity,
+//     clearCart,
+//   };
+  
+//   return (
+//     <CartContext.Provider value={value}>
+//       {children}
+//     </CartContext.Provider>
+//   );
+// };
 
 export function useCart() {
   const context = useContext(CartContext);

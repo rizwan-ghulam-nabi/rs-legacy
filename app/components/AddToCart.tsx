@@ -21,11 +21,12 @@ interface ProtectedAddToCartProps {
     name: string;
     price: number; // This can be either USD or PKR, we'll handle conversion
     image: string;
-    size?: string;
+    size: string;
     color?: string;
     originalPrice?: number;
     category?: string;
     currency?: 'PKR'; // Add currency indicator
+    
   };
   className?: string;
   variant?: 'default' | 'icon' | 'small';

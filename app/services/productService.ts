@@ -58,8 +58,6 @@ export interface Product {
   isNew: boolean;
   isFeatured: boolean;
   colors: string[];
-
-  
 }
 
 // Organized mock data with local images

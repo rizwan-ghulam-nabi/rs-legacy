@@ -1,4 +1,4 @@
-// components/Header.tsx - FIXED SEARCH TOGGLE
+// components/Header.tsx - FULLY TRANSPARENT WITH BLUR
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ShoppingCart, Search, User, Menu, X, ChevronDown, Sparkles, Star, Gem, Crown, Zap, Cloud, Clock, LogOut, Settings, Loader2 } from 'lucide-react';
 import { useCart } from '../lib/cart-context';
 import { useAuth } from '../lib/auth-context';
+import { productService, Product } from '../services/productService';
 
 interface UserData {
   id: string;
@@ -29,61 +30,7 @@ interface SearchProduct {
   rating: number;
 }
 
-// Mock product database - Replace with your actual API
-const PRODUCT_DATABASE: SearchProduct[] = [
-  {
-    id: "1",
-    name: "Classic Cotton T-Shirt",
-    price: 25.99,
-    originalPrice: 35.99,
-    image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500&h=500&fit=crop",
-    category: "clothing",
-    inStock: true,
-    rating: 4.5
-  },
-  {
-    id: "2",
-    name: "Premium Denim Jacket",
-    price: 79.99,
-    originalPrice: 99.99,
-    image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=500&h=500&fit=crop",
-    category: "clothing",
-    inStock: true,
-    rating: 4.8
-  },
-  {
-    id: "3",
-    name: "Urban Style Sneakers",
-    price: 89.99,
-    originalPrice: 119.99,
-    image: "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=500&h=500&fit=crop",
-    category: "footwear",
-    inStock: false,
-    rating: 4.7
-  },
-  {
-    id: "4",
-    name: "Elegance Formal Shirt",
-    price: 45.99,
-    originalPrice: 59.99,
-    image: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=500&h=500&fit=crop",
-    category: "clothing",
-    inStock: true,
-    rating: 4.3
-  },
-  {
-    id: "5",
-    name: "Wireless Bluetooth Headphones",
-    price: 129.99,
-    originalPrice: 159.99,
-    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&h=500&fit=crop",
-    category: "electronics",
-    inStock: true,
-    rating: 4.6
-  }
-];
-
-// Constants
+// Constants - REMOVED DROPDOWN_LINKS
 const NAVIGATION_ITEMS = [
   { 
     name: 'Home', 
@@ -111,53 +58,14 @@ const NAVIGATION_ITEMS = [
   },
 ];
 
-const DROPDOWN_LINKS = [
-  { 
-    name: 'All Products', 
-    href: '/products', 
-    icon: Sparkles, 
-    badge: '✨',
-    gradient: 'from-purple-500 to-pink-500'
-  },
-  { 
-    name: 'New Arrivals', 
-    href: '/products?filter=new', 
-    icon: Star, 
-    badge: 'NEW',
-    gradient: 'from-green-500 to-blue-500'
-  },
-  { 
-    name: 'Best Sellers', 
-    href: '/products?filter=bestsellers', 
-    icon: Crown, 
-    badge: 'TOP',
-    gradient: 'from-yellow-500 to-orange-500'
-  },
-  { 
-    name: 'Limited Edition', 
-    href: '/products?filter=limited', 
-    icon: Gem, 
-    badge: 'EXCLUSIVE',
-    gradient: 'from-purple-500 to-blue-500'
-  },
-  { 
-    name: 'Sale', 
-    href: '/products?filter=sale', 
-    icon: '⚡', 
-    badge: '50% OFF',
-    gradient: 'from-red-500 to-pink-500'
-  },
-];
-
 export default function Header() {
   const { state } = useCart();
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useAuth();
   
-  // State
+  // State - REMOVED isDropdownOpen state
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -174,11 +82,10 @@ export default function Header() {
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
-  // Refs
+  // Refs - REMOVED dropdownRef
   const searchRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Set client-side flag
@@ -221,8 +128,20 @@ export default function Header() {
     };
   }, [isClient]);
 
-  // Enhanced Search Functionality - FIXED
-  const performSearch = useCallback((query: string) => {
+  // Convert Product to SearchProduct
+  const convertToSearchProduct = (product: Product): SearchProduct => ({
+    id: product.id.toString(),
+    name: product.name,
+    price: product.price,
+    originalPrice: product.originalPrice,
+    image: product.image,
+    category: product.category,
+    inStock: true, // You might want to add this field to your Product interface
+    rating: product.rating
+  });
+
+  // Enhanced Search Functionality - UPDATED TO USE PRODUCT SERVICE
+  const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
       setShowSearchResults(false);
@@ -232,23 +151,33 @@ export default function Header() {
 
     setIsSearching(true);
     
-    // Simulate API call delay
-    setTimeout(() => {
-      const filteredProducts = PRODUCT_DATABASE.filter(product =>
-        product.name.toLowerCase().includes(query.toLowerCase()) ||
-        product.category.toLowerCase().includes(query.toLowerCase())
-      );
+    try {
+      // Use the product service to search products
+      const foundProducts = await productService.searchProducts(query);
       
-      setSearchResults(filteredProducts);
+      // Convert Product[] to SearchProduct[]
+      const searchProducts = foundProducts.map(convertToSearchProduct);
+      
+      setSearchResults(searchProducts);
       setShowSearchResults(true);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
       setIsSearching(false);
-    }, 300);
+    }
   }, []);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    performSearch(query);
+    
+    // Debounce the search
+    const timeoutId = setTimeout(() => {
+      performSearch(query);
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
   }, [performSearch]);
 
   const handleSearchSubmit = useCallback((e: React.FormEvent) => {
@@ -282,7 +211,7 @@ export default function Header() {
     setIsSearching(false);
   }, []);
 
-  // Click outside handler
+  // Click outside handler - REMOVED dropdownRef from targets
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // Close search if clicking outside
@@ -295,8 +224,7 @@ export default function Header() {
       // Close other dropdowns
       const targets = [
         { ref: userDropdownRef, condition: isUserDropdownOpen },
-        { ref: mobileMenuRef, condition: isMenuOpen },
-        { ref: dropdownRef, condition: isDropdownOpen }
+        { ref: mobileMenuRef, condition: isMenuOpen }
       ];
 
       targets.forEach(({ ref, condition }) => {
@@ -305,8 +233,6 @@ export default function Header() {
             setIsUserDropdownOpen(false);
           } else if (ref === mobileMenuRef) {
             closeAllMenus();
-          } else if (ref === dropdownRef) {
-            setIsDropdownOpen(false);
           }
         }
       });
@@ -314,27 +240,19 @@ export default function Header() {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isSearchOpen, isUserDropdownOpen, isMenuOpen, isDropdownOpen, closeSearch]);
+  }, [isSearchOpen, isUserDropdownOpen, isMenuOpen, closeSearch]);
 
   // Close dropdown when route changes
   useEffect(() => {
     closeAllMenus();
   }, [pathname]);
 
-  // Memoized values
+  // Memoized values - REMOVED filteredDropdownLinks
   const filteredNavigation = useMemo(() => 
     NAVIGATION_ITEMS.filter(item => 
       isMenuOpen || pathname !== item.href
     ), [isMenuOpen, pathname]
   );
-
-  const filteredDropdownLinks = useMemo(() => 
-    DROPDOWN_LINKS.filter(link => 
-      link.href !== '/products' || pathname !== '/products'
-    ), [pathname]
-  );
-
-  const shouldShowDropdown = filteredDropdownLinks.length > 0;
 
   // User data helpers
   const getUserInitials = useCallback(() => 
@@ -353,10 +271,9 @@ export default function Header() {
     getUserProfileImage() !== null
   , [getUserProfileImage]);
 
-  // Core functions - FIXED TOGGLE SEARCH
+  // Core functions - REMOVED toggleDropdown
   const closeAllMenus = useCallback(() => {
     setIsMenuOpen(false);
-    setIsDropdownOpen(false);
     setIsUserDropdownOpen(false);
     closeSearch();
   }, [closeSearch]);
@@ -364,7 +281,6 @@ export default function Header() {
   const toggleMenu = useCallback(() => {
     setIsMenuOpen(prev => {
       if (!prev) {
-        setIsDropdownOpen(false);
         setIsUserDropdownOpen(false);
         closeSearch();
       }
@@ -372,19 +288,9 @@ export default function Header() {
     });
   }, [closeSearch]);
 
-  const toggleDropdown = useCallback(() => {
-    setIsDropdownOpen(prev => {
-      if (prev) return !prev;
-      setIsUserDropdownOpen(false);
-      closeSearch();
-      return true;
-    });
-  }, [closeSearch]);
-
   const toggleUserDropdown = useCallback(() => {
     setIsUserDropdownOpen(prev => {
       if (prev) return !prev;
-      setIsDropdownOpen(false);
       closeSearch();
       return true;
     });
@@ -436,19 +342,19 @@ export default function Header() {
 
   // JSX Components as variables for better organization
   const HeaderSkeleton = () => (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl border-b border-gray-200/20 dark:border-gray-700/20">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-2xl">
       <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 bg-gray-300 rounded-2xl animate-pulse" />
+            <div className="w-14 h-14 bg-gray-300/20 rounded-2xl animate-pulse" />
             <div className="flex flex-col">
-              <div className="h-8 w-32 bg-gray-300 rounded animate-pulse" />
-              <div className="h-4 w-24 bg-gray-300 rounded animate-pulse mt-1" />
+              <div className="h-8 w-32 bg-gray-300/20 rounded animate-pulse" />
+              <div className="h-4 w-24 bg-gray-300/20 rounded animate-pulse mt-1" />
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-gray-300 rounded-full animate-pulse" />
-            <div className="w-10 h-10 bg-gray-300 rounded-full animate-pulse" />
+            <div className="w-10 h-10 bg-gray-300/20 rounded-full animate-pulse" />
+            <div className="w-10 h-10 bg-gray-300/20 rounded-full animate-pulse" />
           </div>
         </div>
       </div>
@@ -458,15 +364,15 @@ export default function Header() {
   const AnimatedBackground = () => (
     <div className="fixed inset-0 pointer-events-none z-30">
       <div 
-        className="absolute inset-0 opacity-40 transition-all duration-1000"
+        className="absolute inset-0 opacity-30 transition-all duration-1000"
         style={{
           background: `
             radial-gradient(800px at ${mousePosition.x}px ${mousePosition.y}px, 
-              rgba(120, 119, 198, 0.25), transparent 70%),
+              rgba(120, 119, 198, 0.15), transparent 70%),
             radial-gradient(600px at ${mousePosition.x * 0.7}px ${mousePosition.y * 0.7}px, 
-              rgba(255, 119, 198, 0.15), transparent 50%),
+              rgba(255, 119, 198, 0.10), transparent 50%),
             radial-gradient(400px at ${mousePosition.x * 1.3}px ${mousePosition.y * 1.3}px, 
-              rgba(119, 198, 255, 0.1), transparent 40%)
+              rgba(119, 198, 255, 0.05), transparent 40%)
           `,
         }}
       />
@@ -477,7 +383,7 @@ export default function Header() {
     <Link 
       href="/" 
       className={`flex items-center space-x-4 group relative transition-all duration-500 ${
-        isSearchOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
+        isSearchOpen ? '  opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
       }`}
       onClick={closeAllMenus}
       onMouseEnter={() => setActiveHover('logo')}
@@ -506,7 +412,7 @@ export default function Header() {
         </span>
         <div className="flex items-center space-x-2 mt-1">
           <div className="w-1.5 h-1.5 bg-gradient-to-r from-green-400 to-cyan-400 rounded-full animate-pulse" />
-          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 tracking-widest uppercase">
+          <span className="text-xs font-semibold text-gray-300 dark:text-gray-400 tracking-widest uppercase">
             Timeless Elegance
           </span>
         </div>
@@ -523,17 +429,17 @@ export default function Header() {
       >
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl blur-lg transform scale-110 transition-all duration-500 group-hover:scale-125 group-hover:opacity-40" />
         
-        <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-3xl rounded-2xl px-6 py-3 border border-white/40 dark:border-gray-700/40 shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:border-purple-500/30">
+        <div className="relative bg-black/20 dark:bg-white/5 backdrop-blur-3xl rounded-2xl px-6 py-3 border border-white/10 dark:border-gray-700/10 shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:border-purple-500/30">
           <div className="flex items-center space-x-3">
             <div className="relative">
-              <Clock className="w-4 h-4 text-purple-500 transform group-hover:scale-110 transition-transform duration-300" />
+              <Clock className="w-4 h-4 text-purple-400 transform group-hover:scale-110 transition-transform duration-300" />
               <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
             </div>
             <div className="flex flex-col items-start">
-              <span className="font-mono text-lg font-bold text-gray-800 dark:text-white tracking-wider">
+              <span className="font-mono text-lg font-bold text-white dark:text-white tracking-wider">
                 {currentTime}
               </span>
-              <span className={`text-xs text-gray-500 dark:text-gray-400 transition-all duration-500 ${
+              <span className={`text-xs text-gray-300 dark:text-gray-400 transition-all duration-500 ${
                 isClockHovered ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-1'
               }`}>
                 {currentDate}
@@ -553,18 +459,18 @@ export default function Header() {
       return (
         <button
           onClick={() => handleNavigation(item.href)}
-          className={`w-full flex items-center space-x-4 py-4 px-6 font-semibold rounded-2xl transition-all duration-500 border border-white/20 dark:border-gray-700/30 group ${
+          className={`w-full flex items-center space-x-4 py-4 px-6 font-semibold rounded-2xl transition-all duration-500 border border-white/10 dark:border-gray-700/10 group backdrop-blur-xl ${
             isActive
-              ? 'text-white bg-gradient-to-r from-purple-500/40 to-blue-500/40'
-              : 'text-gray-700 dark:text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-purple-500/25 hover:to-blue-500/25'
+              ? 'text-white bg-gradient-to-r from-purple-500/30 to-blue-500/30'
+              : 'text-gray-300 dark:text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-blue-500/20'
           }`}
         >
           <Icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${
-            isActive ? 'text-white' : 'text-purple-500'
+            isActive ? 'text-white' : 'text-purple-400'
           }`} />
           <div className="flex flex-col items-start">
             <span className="text-base">{item.name}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400 group-hover:text-white/80">
+            <span className="text-xs text-gray-400 dark:text-gray-400 group-hover:text-white/80">
               {item.description}
             </span>
           </div>
@@ -583,17 +489,17 @@ export default function Header() {
         className={`relative px-6 py-4 font-semibold transition-all duration-700 group ${
           isActive 
             ? 'text-white' 
-            : 'text-gray-700 dark:text-gray-300 hover:text-white'
+            : 'text-gray-300 dark:text-gray-300 hover:text-white'
         }`}
         onMouseEnter={() => setActiveHover(item.name)}
         onMouseLeave={() => setActiveHover(null)}
         onClick={closeAllMenus}
       >
-        <div className={`absolute inset-0 rounded-2xl transition-all duration-700 ${
+        <div className={`absolute inset-0 rounded-2xl transition-all duration-700 backdrop-blur-lg ${
           isActive 
-            ? 'bg-gradient-to-r from-purple-500/40 to-blue-500/40' 
+            ? 'bg-gradient-to-r from-purple-500/30 to-blue-500/30' 
             : activeHover === item.name 
-            ? 'bg-gradient-to-r from-purple-500/25 to-blue-500/25' 
+            ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20' 
             : 'bg-gradient-to-r from-purple-500/0 to-blue-500/0 group-hover:from-purple-500/15 group-hover:to-blue-500/15'
         }`} />
         
@@ -609,11 +515,11 @@ export default function Header() {
           <Icon className={`w-4 h-4 transition-all duration-700 ${
             isActive || activeHover === item.name
               ? 'text-white scale-110' 
-              : 'text-gray-500 group-hover:text-purple-400'
+              : 'text-gray-400 group-hover:text-purple-300'
           }`} />
           <div className="flex flex-col">
             <span className="tracking-wide text-sm">{item.name}</span>
-            <span className={`text-xs text-gray-500 dark:text-gray-400 transition-all duration-500 ${
+            <span className={`text-xs text-gray-400 dark:text-gray-400 transition-all duration-500 ${
               activeHover === item.name ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-1'
             }`}>
               {item.description}
@@ -657,7 +563,7 @@ export default function Header() {
   }, [hasProfileImage, getUserProfileImage, getUserFullName, getUserInitials]);
 
   const SearchInterface = () => (
-    <div ref={searchRef} className="absolute top-0 left-0 right-0 h-20 flex items-center justify-center px-4 sm:px-6 lg:px-8 z-60 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl border-b border-gray-200/20 dark:border-gray-700/20">
+    <div ref={searchRef} className="absolute top-0 left-0 right-0 h-20 flex items-center justify-center px-4 sm:px-6 lg:px-8 z-60 bg-black/30 dark:bg-gray-900/30 backdrop-blur-3xl">
       <form onSubmit={handleSearchSubmit} className="w-full max-w-4xl relative">
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-purple-500/40 to-blue-500/40 rounded-3xl blur-2xl transform scale-105 animate-pulse" />
@@ -669,22 +575,22 @@ export default function Header() {
             placeholder="✨ Search products... (Try 'T-Shirt', 'Jacket', 'Sneakers')"
             value={searchQuery}
             onChange={handleSearchChange}
-            className="relative w-full px-8 py-5 pl-14 pr-14 rounded-3xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl shadow-2xl text-lg text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/40 transition-all duration-500 font-light"
+            className="relative w-full px-8 py-5 pl-14 pr-14 rounded-3xl border-0 bg-black/40 dark:bg-gray-900/40 backdrop-blur-3xl shadow-2xl text-lg text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/40 transition-all duration-500 font-light"
             autoFocus
           />
           
-          <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-purple-500 w-5 h-5" />
+          <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-purple-400 w-5 h-5" />
           
           {isSearching && (
             <div className="absolute right-12 top-1/2 transform -translate-y-1/2">
-              <Loader2 className="w-5 h-5 text-purple-500 animate-spin" />
+              <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
             </div>
           )}
           
           <button
             type="button"
             onClick={closeSearch}
-            className="absolute right-6 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-all duration-300 p-1 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50"
+            className="absolute right-6 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-all duration-300 p-1 rounded-full hover:bg-white/10"
           >
             <X className="w-5 h-5" />
           </button>
@@ -692,15 +598,15 @@ export default function Header() {
 
         {/* Enhanced Search Results Dropdown */}
         {showSearchResults && searchQuery.trim() && (
-          <div className="absolute top-full left-0 right-0 mt-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/20 dark:border-gray-700/30 py-4 z-70 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/60 to-gray-50/60 dark:from-gray-800/60 dark:to-gray-900/60" />
+          <div className="absolute top-full left-0 right-0 mt-4 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/10 py-4 z-70 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-black/30 to-gray-900/30" />
             <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
             
             <div className="relative z-10 max-h-96 overflow-y-auto">
               {searchResults.length > 0 ? (
                 <>
-                  <div className="px-6 py-3 border-b border-gray-200/30 dark:border-gray-700/30">
-                    <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                  <div className="px-6 py-3 border-b border-white/10">
+                    <p className="text-sm font-semibold text-gray-300">
                       Found {searchResults.length} product{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
                     </p>
                   </div>
@@ -709,39 +615,39 @@ export default function Header() {
                     <button
                       key={product.id}
                       onClick={() => handleProductClick(product.id)}
-                      className="w-full flex items-center space-x-4 px-6 py-4 text-left hover:bg-purple-50/50 dark:hover:bg-purple-900/20 transition-all duration-300 group border-b border-gray-100/30 dark:border-gray-700/30 last:border-b-0"
+                      className="w-full flex items-center space-x-4 px-6 py-4 text-left hover:bg-purple-500/10 transition-all duration-300 group border-b border-white/5 last:border-b-0"
                     >
                       <img
                         src={product.image}
                         alt={product.name}
-                        className="w-16 h-16 rounded-xl object-cover border border-gray-200/30 dark:border-gray-700/30 group-hover:scale-105 transition-transform duration-300"
+                        className="w-16 h-16 rounded-xl object-cover border border-white/10 group-hover:scale-105 transition-transform duration-300"
                       />
                       
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-800 dark:text-white truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-300">
+                        <p className="font-semibold text-white truncate group-hover:text-purple-300 transition-colors duration-300">
                           {product.name}
                         </p>
                         <div className="flex items-center space-x-3 mt-2">
-                          <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
+                          <span className="text-lg font-bold text-purple-300">
                             ${product.price}
                           </span>
                           {product.originalPrice && (
-                            <span className="text-sm text-gray-500 dark:text-gray-400 line-through">
+                            <span className="text-sm text-gray-400 line-through">
                               ${product.originalPrice}
                             </span>
                           )}
-                          <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full capitalize">
+                          <span className="text-xs px-2 py-1 bg-white/10 text-gray-300 rounded-full capitalize">
                             {product.category}
                           </span>
                           {!product.inStock && (
-                            <span className="text-xs text-red-500 font-semibold">
+                            <span className="text-xs text-red-400 font-semibold">
                               Out of Stock
                             </span>
                           )}
                         </div>
                         <div className="flex items-center space-x-1 mt-1">
                           <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="text-xs text-gray-400">
                             {product.rating}
                           </span>
                         </div>
@@ -751,7 +657,7 @@ export default function Header() {
                     </button>
                   ))}
                   
-                  <div className="px-6 py-4 border-t border-gray-200/30 dark:border-gray-700/30 bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/20 dark:to-blue-900/20">
+                  <div className="px-6 py-4 border-t border-white/10 bg-gradient-to-r from-purple-500/10 to-blue-500/10">
                     <button
                       type="submit"
                       className="w-full flex items-center justify-center space-x-2 py-3 px-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-2xl font-semibold hover:from-purple-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
@@ -759,7 +665,7 @@ export default function Header() {
                       <Search className="w-4 h-4" />
                       <span>View First Product</span>
                     </button>
-                    <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                    <p className="text-xs text-center text-gray-400 mt-2">
                       Or click any product above to view details
                     </p>
                   </div>
@@ -767,10 +673,10 @@ export default function Header() {
               ) : !isSearching ? (
                 <div className="px-6 py-8 text-center">
                   <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400 font-semibold mb-2">
+                  <p className="text-gray-300 font-semibold mb-2">
                     No products found
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500 mb-4">
+                  <p className="text-sm text-gray-400 mb-4">
                     We couldn't find any products matching "{searchQuery}"
                   </p>
                   <button
@@ -797,15 +703,16 @@ export default function Header() {
     <>
       {isClient && <AnimatedBackground />}
 
+      {/* FULLY TRANSPARENT HEADER */}
       <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
         scrolled 
-          ? 'bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl shadow-2xl shadow-purple-500/10 border-b border-white/20 dark:border-gray-700/30' 
-          : 'bg-gradient-to-b from-white/98 via-white/95 to-white/90 dark:from-gray-900/98 dark:via-gray-900/95 dark:to-gray-900/90 backdrop-blur-2xl border-b border-gray-200/20 dark:border-gray-700/20'
+          ? 'bg-black/20 dark:bg-gray-900/20 backdrop-blur-3xl shadow-2xl shadow-purple-500/5' 
+          : 'bg-transparent backdrop-blur-2xl'
       }`}>
         
         {/* Elegant Top Border with Gradient Flow */}
-        <div className="h-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent animate-shimmer" />
+        <div className="h-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 relative overflow-hidden opacity-80">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
         </div>
         
         {/* Enhanced Floating Particles */}
@@ -814,7 +721,7 @@ export default function Header() {
             {[...Array(12)].map((_, i) => (
               <div
                 key={i}
-                className="absolute w-1 h-1 bg-gradient-to-r from-purple-400 to-blue-400 rounded-full opacity-30 animate-float"
+                className="absolute w-1 h-1 bg-gradient-to-r from-purple-400/30 to-blue-400/30 rounded-full opacity-20 animate-float"
                 style={{
                   left: `${Math.random() * 100}%`,
                   top: `${Math.random() * 100}%`,
@@ -839,77 +746,6 @@ export default function Header() {
                 {filteredNavigation.map((item) => (
                   <NavigationLink key={item.name} item={item} />
                 ))}
-                
-                {/* Enhanced Dropdown */}
-                {shouldShowDropdown && (
-                  <div className="relative" ref={dropdownRef}>
-                    <button
-                      className="flex items-center space-x-3 px-6 py-4 text-gray-700 dark:text-gray-300 hover:text-white font-semibold transition-all duration-700 group"
-                      onMouseEnter={() => setActiveHover('shop')}
-                      onMouseLeave={() => setActiveHover(null)}
-                      onClick={toggleDropdown}
-                    >
-                      <div className={`absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl transition-all duration-700 ${
-                        activeHover === 'shop' || isDropdownOpen
-                          ? 'from-purple-500/25 to-blue-500/25' 
-                          : 'group-hover:from-purple-500/15 group-hover:to-blue-500/15'
-                      }`} />
-                      
-                      <div className="relative z-10 flex items-center space-x-3">
-                        <Gem className={`w-4 h-4 transition-all duration-700 ${
-                          activeHover === 'shop' || isDropdownOpen
-                            ? 'text-white scale-110' 
-                            : 'text-gray-500 group-hover:text-purple-400'
-                        }`} />
-                        <div className="flex flex-col">
-                          <span className="text-sm">Collections</span>
-                          <span className={`text-xs text-gray-500 dark:text-gray-400 transition-all duration-500 ${
-                            activeHover === 'shop' ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-1'
-                          }`}>
-                            Explore more
-                          </span>
-                        </div>
-                        <ChevronDown className={`w-3 h-3 transition-transform duration-700 ${
-                          isDropdownOpen ? 'rotate-180 scale-110' : 'group-hover:scale-110'
-                        }`} />
-                      </div>
-                    </button>
-
-                    {/* Dropdown Content */}
-                    {isDropdownOpen && (
-                      <div className="absolute top-full left-0 mt-2 w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/20 dark:border-gray-700/30 py-4 z-60 overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-white/60 to-gray-50/60 dark:from-gray-800/60 dark:to-gray-900/60" />
-                        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
-                        
-                        <div className="relative z-10 px-2">
-                          {filteredDropdownLinks.map((link) => {
-                            const Icon = link.icon;
-                            return (
-                              <Link
-                                key={link.name}
-                                href={link.href}
-                                onClick={closeAllMenus}
-                                className="flex items-center justify-between px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-300 group hover:bg-purple-50/50 dark:hover:bg-purple-900/20 rounded-2xl mx-2"
-                              >
-                                <div className="flex items-center space-x-3">
-                                  {typeof Icon === 'string' ? (
-                                    <span className="text-lg">{Icon}</span>
-                                  ) : (
-                                    <Icon className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform duration-300" />
-                                  )}
-                                  <span className="font-medium text-sm">{link.name}</span>
-                                </div>
-                                <span className={`px-2 py-1 text-xs font-bold rounded-full bg-gradient-to-r ${link.gradient} text-white transform group-hover:scale-110 transition-transform duration-300`}>
-                                  {link.badge}
-                                </span>
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </nav>
             )}
 
@@ -920,11 +756,11 @@ export default function Header() {
                 onClick={toggleSearch}
                 className={`relative p-3 transition-all duration-500 group ${
                   isSearchOpen 
-                    ? 'text-purple-600 dark:text-purple-400 scale-110' 
-                    : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+                    ? 'text-purple-300 scale-110' 
+                    : 'text-gray-300 hover:text-purple-300'
                 }`}
               >
-                <div className={`absolute inset-0 rounded-2xl transition-all duration-500 ${
+                <div className={`absolute inset-0 rounded-2xl transition-all duration-500 backdrop-blur-lg ${
                   isSearchOpen
                     ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20' 
                     : 'bg-gradient-to-r from-purple-500/0 to-blue-500/0 group-hover:from-purple-500/10 group-hover:to-blue-500/10'
@@ -941,28 +777,28 @@ export default function Header() {
                   className={`relative flex items-center space-x-3 px-4 py-2 transition-all duration-500 group rounded-2xl ${
                     isSearchOpen
                       ? 'opacity-0 scale-95 pointer-events-none' 
-                      : 'opacity-100 scale-100 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-blue-500/10'
+                      : 'opacity-100 scale-100 text-gray-300 hover:text-purple-300 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-blue-500/10'
                   }`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500 backdrop-blur-lg" />
                   
                   {user ? (
                     <div className="flex items-center space-x-3 relative z-10">
                       <div className="relative">
                         <UserAvatar size="sm" />
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900" />
+                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black/30 dark:border-gray-900/30" />
                       </div>
                       
                       <div className="hidden lg:flex flex-col items-start">
-                        <span className="text-sm font-semibold text-gray-800 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-300">
+                        <span className="text-sm font-semibold text-white group-hover:text-purple-300 transition-colors duration-300">
                           {user.firstName}
                         </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-xs text-gray-400">
                           Welcome back!
                         </span>
                       </div>
                       
-                      <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform duration-300 ${
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${
                         isUserDropdownOpen ? 'rotate-180' : ''
                       }`} />
                     </div>
@@ -976,26 +812,26 @@ export default function Header() {
                 
                 {/* Enhanced User Dropdown Menu */}
                 {isUserDropdownOpen && user && (
-                  <div className="absolute top-full right-0 mt-2 w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/20 dark:border-gray-700/30 py-4 z-60 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/60 to-gray-50/60 dark:from-gray-800/60 dark:to-gray-900/60" />
+                  <div className="absolute top-full right-0 mt-2 w-80 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/10 py-4 z-60 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-black/30 to-gray-900/30" />
                     <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
                     
-                    <div className="px-6 py-4 border-b border-gray-200/30 dark:border-gray-700/30 relative z-10">
+                    <div className="px-6 py-4 border-b border-white/10 relative z-10">
                       <div className="flex items-center space-x-4">
                         <div className="relative">
                           <UserAvatar size="md" />
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-900" />
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-black/30 dark:border-gray-900/30" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                          <p className="text-sm font-semibold text-white truncate">
                             {getUserFullName()}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <p className="text-xs text-gray-400 truncate">
                             {user.email}
                           </p>
                           <div className="flex items-center space-x-1 mt-1">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            <span className="text-xs text-green-400 font-medium">
                               Online
                             </span>
                           </div>
@@ -1006,7 +842,7 @@ export default function Header() {
                     <div className="py-2 relative z-10">
                       <button
                         onClick={() => handleMobileButton(() => router.push('/profile'))}
-                        className="w-full flex items-center space-x-3 px-6 py-3 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-300 group hover:bg-purple-50/50 dark:hover:bg-purple-900/20"
+                        className="w-full flex items-center space-x-3 px-6 py-3 text-gray-300 hover:text-purple-300 transition-all duration-300 group hover:bg-purple-500/10"
                       >
                         <User className="w-4 h-4 transform group-hover:scale-110 transition-transform duration-300" />
                         <span>My Profile</span>
@@ -1014,17 +850,17 @@ export default function Header() {
                       
                       <button
                         onClick={() => handleMobileButton(() => router.push('/settings'))}
-                        className="w-full flex items-center space-x-3 px-6 py-3 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-300 group hover:bg-purple-50/50 dark:hover:bg-purple-900/20"
+                        className="w-full flex items-center space-x-3 px-6 py-3 text-gray-300 hover:text-purple-300 transition-all duration-300 group hover:bg-purple-500/10"
                       >
                         <Settings className="w-4 h-4 transform group-hover:scale-110 transition-transform duration-300" />
                         <span>Account Settings</span>
                       </button>
                       
-                      <div className="border-t border-gray-200/30 dark:border-gray-700/30 my-2" />
+                      <div className="border-t border-white/10 my-2" />
                       
                       <button
                         onClick={handleLogout}
-                        className="w-full flex items-center space-x-3 px-6 py-3 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all duration-300 group hover:bg-red-50/50 dark:hover:bg-red-900/20"
+                        className="w-full flex items-center space-x-3 px-6 py-3 text-red-400 hover:text-red-300 transition-all duration-300 group hover:bg-red-500/10"
                       >
                         <LogOut className="w-4 h-4 transform group-hover:scale-110 transition-transform duration-300" />
                         <span>Sign Out</span>
@@ -1041,11 +877,11 @@ export default function Header() {
                   className={`relative p-3 transition-all duration-500 group ${
                     isSearchOpen
                       ? 'opacity-0 scale-95 pointer-events-none' 
-                      : 'opacity-100 scale-100 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+                      : 'opacity-100 scale-100 text-gray-300 hover:text-purple-300'
                   }`}
                   onClick={closeAllMenus}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500 backdrop-blur-lg" />
                   
                   <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-500 opacity-0 group-hover:opacity-100 transition-all duration-500" style={{ 
                     mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
@@ -1067,14 +903,14 @@ export default function Header() {
             {/* Enhanced Mobile Menu Button */}
             <button
               onClick={toggleMenu}
-              className={`md:hidden relative p-3 transition-all duration-500 group ${
+              className={`md:hidden relative p-2 transition-all duration-500 group ${
                 isSearchOpen
                   ? 'opacity-0 scale-95 pointer-events-none' 
-                  : 'opacity-100 scale-100 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+                  : 'opacity-100 scale-100 text-gray-300 hover:text-purple-300'
               }`}
               aria-label="Toggle menu"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500 backdrop-blur-lg" />
               {isMenuOpen ? (
                 <X className="w-6 h-6 relative z-10 transform transition-all duration-500 group-hover:rotate-90 scale-110" />
               ) : (
@@ -1091,37 +927,37 @@ export default function Header() {
         {isMenuOpen && (
           <>
             <div 
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 md:hidden"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
               onClick={closeAllMenus}
             />
             
             <div 
               ref={mobileMenuRef}
-              className="md:hidden absolute top-full left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl border-t border-gray-200/30 dark:border-gray-700/30 shadow-2xl z-50 overflow-y-auto max-h-[80vh]"
+              className="md:hidden absolute top-full left-0 right-0 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl border-t border-white/10 shadow-2xl z-50 overflow-y-auto max-h-[80vh]"
             >
               <div className="py-8 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/15 via-blue-500/10 to-cyan-500/5" />
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/5 to-cyan-500/5" />
                 
                 <div className="absolute top-4 right-4">
-                  <Sparkles className="w-6 h-6 text-purple-400 animate-spin" style={{ animationDuration: '3s' }} />
+                  <Sparkles className="w-6 h-6 text-purple-400/70 animate-spin" style={{ animationDuration: '3s' }} />
                 </div>
                 <div className="absolute bottom-4 left-4">
-                  <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" style={{ animationDuration: '2s' }} />
+                  <Sparkles className="w-4 h-4 text-cyan-400/70 animate-pulse" style={{ animationDuration: '2s' }} />
                 </div>
 
                 {/* Enhanced Mobile Digital Clock */}
                 {currentTime && (
                   <div className="px-6 mb-6 relative">
                     <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/25 to-blue-500/25 rounded-2xl blur-lg transform scale-105" />
-                      <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-3xl rounded-2xl px-6 py-4 border border-white/30 dark:border-gray-700/30 shadow-2xl">
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl blur-lg transform scale-105" />
+                      <div className="relative bg-black/30 dark:bg-white/5 backdrop-blur-3xl rounded-2xl px-6 py-4 border border-white/10 shadow-2xl">
                         <div className="flex items-center justify-center space-x-3">
-                          <Clock className="w-4 h-4 text-purple-500" />
+                          <Clock className="w-4 h-4 text-purple-400" />
                           <div className="flex flex-col items-center">
-                            <span className="font-mono text-lg font-bold text-gray-800 dark:text-white tracking-wider">
+                            <span className="font-mono text-lg font-bold text-white tracking-wider">
                               {currentTime}
                             </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <span className="text-xs text-gray-400 mt-1">
                               {currentDate}
                             </span>
                           </div>
@@ -1133,22 +969,22 @@ export default function Header() {
 
                 {/* User Info in Mobile Menu */}
                 {user && (
-                  <div className="px-6 py-4 border-b border-gray-200/30 dark:border-gray-700/30 mb-4 relative z-10">
+                  <div className="px-6 py-4 border-b border-white/10 mb-4 relative z-10">
                     <div className="flex items-center space-x-4">
                       <div className="relative">
                         <UserAvatar size="lg" />
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-900" />
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-black/30 dark:border-gray-900/30" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                        <p className="text-lg font-semibold text-white truncate">
                           {getUserFullName()}
                         </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        <p className="text-sm text-gray-400 truncate">
                           {user.email}
                         </p>
                         <div className="flex items-center space-x-2 mt-1">
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                          <span className="text-xs text-green-400 font-medium">
                             Online
                           </span>
                         </div>
@@ -1161,18 +997,18 @@ export default function Header() {
                 <div className="px-6 mb-8 relative">
                   <form onSubmit={handleSearchSubmit}>
                     <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/25 to-blue-500/25 rounded-3xl blur-lg transform scale-105" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-3xl blur-lg transform scale-105" />
                       <input
                         type="text"
                         placeholder="🔮 Search products..."
                         value={searchQuery}
                         onChange={handleSearchChange}
-                        className="relative w-full px-6 py-4 pl-12 rounded-3xl border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm shadow-2xl text-gray-800 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 transition-all duration-500 text-base font-light"
+                        className="relative w-full px-6 py-4 pl-12 rounded-3xl border-0 bg-black/40 dark:bg-gray-900/40 backdrop-blur-3xl shadow-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 transition-all duration-500 text-base font-light"
                       />
-                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-500 w-4 h-4" />
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400 w-4 h-4" />
                       {isSearching && (
                         <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                          <Loader2 className="w-4 h-4 text-purple-500 animate-spin" />
+                          <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
                         </div>
                       )}
                     </div>
@@ -1184,39 +1020,15 @@ export default function Header() {
                   {filteredNavigation.map((item) => (
                     <NavigationLink key={item.name} item={item} isMobile={true} />
                   ))}
-
-                  {/* Mobile Dropdown Links */}
-                  {filteredDropdownLinks.map((link) => {
-                    const Icon = link.icon;
-                    return (
-                      <button
-                        key={link.name}
-                        onClick={() => handleNavigation(link.href)}
-                        className="w-full flex items-center justify-between py-4 px-6 text-gray-700 dark:text-gray-300 hover:text-white font-semibold rounded-2xl transition-all duration-500 hover:bg-gradient-to-r hover:from-purple-500/25 hover:to-blue-500/25 group border border-white/20 dark:border-gray-700/30"
-                      >
-                        <div className="flex items-center space-x-4">
-                          {typeof Icon === 'string' ? (
-                            <span className="text-lg">{Icon}</span>
-                          ) : (
-                            <Icon className="w-5 h-5 text-purple-500 group-hover:scale-110 transition-transform duration-300" />
-                          )}
-                          <span>{link.name}</span>
-                        </div>
-                        <span className={`px-2 py-1 text-xs font-bold rounded-full bg-gradient-to-r ${link.gradient} text-white transform group-hover:scale-110 transition-transform duration-300`}>
-                          {link.badge}
-                        </span>
-                      </button>
-                    );
-                  })}
                 </div>
 
                 {/* Mobile Action Buttons */}
-                <div className="flex items-center space-x-3 mt-8 pt-8 border-t border-gray-200/30 dark:border-gray-700/30 px-6 relative">
+                <div className="flex items-center space-x-3 mt-8 pt-8 border-t border-white/10 px-6 relative">
                   {user ? (
                     <>
                       <button 
                         onClick={() => handleMobileButton(() => router.push('/profile'))}
-                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-500 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-700/50 rounded-2xl hover:from-purple-50 hover:to-blue-50 dark:hover:from-purple-900/20 dark:hover:to-blue-900/20 group shadow-2xl border border-white/20 dark:border-gray-700/30"
+                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10"
                       >
                         <User className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                         <span className="font-semibold text-sm">Profile</span>
@@ -1224,7 +1036,7 @@ export default function Header() {
                       
                       <button 
                         onClick={() => handleMobileButton(() => router.push('/settings'))}
-                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-500 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-700/50 rounded-2xl hover:from-purple-50 hover:to-blue-50 dark:hover:from-purple-900/20 dark:hover:to-blue-900/20 group shadow-2xl border border-white/20 dark:border-gray-700/30"
+                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10"
                       >
                         <Settings className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                         <span className="font-semibold text-sm">Settings</span>
@@ -1232,7 +1044,7 @@ export default function Header() {
                       
                       <button 
                         onClick={() => handleMobileButton(handleLogout)}
-                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all duration-500 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-700/50 rounded-2xl hover:from-red-50 hover:to-pink-50 dark:hover:from-red-900/20 dark:hover:to-pink-900/20 group shadow-2xl border border-white/20 dark:border-gray-700/30"
+                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-red-400 hover:text-red-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-red-500/10 group shadow-2xl border border-white/10"
                       >
                         <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                         <span className="font-semibold text-sm">Logout</span>
@@ -1241,7 +1053,7 @@ export default function Header() {
                   ) : (
                     <button 
                       onClick={() => handleMobileButton(handleAccountClick)}
-                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-500 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-700/50 rounded-2xl hover:from-purple-50 hover:to-blue-50 dark:hover:from-purple-900/20 dark:hover:to-blue-900/20 group shadow-2xl border border-white/20 dark:border-gray-700/30"
+                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10"
                     >
                       <User className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                       <span className="font-semibold text-sm">Login</span>
@@ -1252,7 +1064,7 @@ export default function Header() {
                   {user && (
                     <button 
                       onClick={() => handleNavigation('/cart')}
-                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-500 bg-gradient-to-r from-gray-50/50 to-gray-100/50 dark:from-gray-800/50 dark:to-gray-700/50 rounded-2xl hover:from-purple-50 hover:to-blue-50 dark:hover:from-purple-900/20 dark:hover:to-blue-900/20 group shadow-2xl border border-white/20 dark:border-gray-700/30 relative"
+                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 relative"
                     >
                       <ShoppingCart className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                       <span className="font-semibold text-sm">Cart</span>

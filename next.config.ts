@@ -1,11 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    appDir: true, // Enables /app directory if you're using it
-  },
-
   images: {
-    domains: ['images.unsplash.com', 'plus.unsplash.com'],
+    // domains: ['images.unsplash.com', 'plus.unsplash.com'],
     remotePatterns: [
       {
         protocol: 'https',

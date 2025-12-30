@@ -3,7 +3,7 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
-  description?: string;
+  description: string;
   image: string;
   coverImage?: string;
   icon?: string;
@@ -17,6 +17,7 @@ export interface Category {
   tags: string[];
   createdAt: string;
   updatedAt: string;
+ 
 }
 
 export interface CategoryFilters {
@@ -25,3 +26,6 @@ export interface CategoryFilters {
   sortBy: 'name' | 'productCount' | 'newest';
   tags: string[];
 }
+
+
+

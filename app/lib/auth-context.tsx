@@ -57,7 +57,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Auth check response:", data);
+        // console.log("Auth check response:", data);
         
         if (data.success && data.data) {
           // Transform the data to match our User interface

@@ -1,4 +1,4 @@
-// app/components/OrderDetails.tsx - Updated version
+// app/components/OrderDetails.tsx - Updated with real address data
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -10,11 +10,96 @@ interface OrderDetailsProps {
   orderId: string;
 }
 
+interface Address {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  street: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  isDefault?: boolean;
+  addressType?: 'home' | 'work' | 'other';
+}
+
 const OrderDetails = ({ orderId }: OrderDetailsProps) => {
   const { getOrder } = useOrder();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Function to get saved addresses from localStorage
+  const getSavedAddresses = (): Address[] => {
+    if (typeof window === 'undefined') return [];
+    
+    try {
+      const savedAddresses = localStorage.getItem('userAddresses');
+      if (savedAddresses) {
+        return JSON.parse(savedAddresses);
+      }
+      
+      // Fallback to checkout address if no saved addresses
+      const checkoutAddress = localStorage.getItem('checkoutAddress');
+      if (checkoutAddress) {
+        const address = JSON.parse(checkoutAddress);
+        return [address];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error loading addresses:', error);
+      return [];
+    }
+  };
+
+  // Function to get the most recent shipping address
+  const getRecentShippingAddress = (): Address | null => {
+    const addresses = getSavedAddresses();
+    if (addresses.length === 0) return null;
+
+    // Try to get default address first
+    const defaultAddress = addresses.find(addr => addr.isDefault);
+    if (defaultAddress) return defaultAddress;
+
+    // Otherwise return the most recently used (first in array)
+    return addresses[0];
+  };
+
+  // Function to get address from order context or user's saved addresses
+  const getOrderWithRealAddress = (orderData: any) => {
+    const recentAddress = getRecentShippingAddress();
+    
+    if (!recentAddress) {
+      return orderData; // Return original order data if no address found
+    }
+
+    // Merge real address data with order data
+    return {
+      ...orderData,
+      shippingAddress: {
+        name: recentAddress.name,
+        street: recentAddress.street,
+        city: recentAddress.city,
+        state: recentAddress.state,
+        zipCode: recentAddress.zipCode,
+        country: recentAddress.country,
+        phone: recentAddress.phone,
+        email: recentAddress.email,
+        addressType: recentAddress.addressType || 'home'
+      },
+      billingAddress: {
+        name: recentAddress.name,
+        street: recentAddress.street,
+        city: recentAddress.city,
+        state: recentAddress.state,
+        zipCode: recentAddress.zipCode,
+        country: recentAddress.country,
+        addressType: recentAddress.addressType || 'home'
+      }
+    };
+  };
 
   // Simulate real-time status updates
   useEffect(() => {
@@ -28,13 +113,13 @@ const OrderDetails = ({ orderId }: OrderDetailsProps) => {
         const realOrder = getOrder(orderId);
         
         if (realOrder) {
-          setOrder(realOrder);
+          const orderWithRealAddress = getOrderWithRealAddress(realOrder);
+          setOrder(orderWithRealAddress);
           setLoading(false);
           return;
         }
 
-        // If no real order found, use mock data (for demo purposes)
-        // In production, you would make an API call here
+        // If no real order found, use mock data with real addresses
         const mockOrder = {
           id: orderId,
           orderNumber: orderId.startsWith('ORD-') ? orderId : `RS-${orderId}`,
@@ -44,24 +129,6 @@ const OrderDetails = ({ orderId }: OrderDetailsProps) => {
           subtotal: 129.97,
           shipping: 15.00,
           tax: 5.00,
-          shippingAddress: {
-            name: 'John Doe',
-            street: '123 Main Street',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10001',
-            country: 'USA',
-            phone: '+1 (555) 123-4567',
-            email: 'john.doe@example.com'
-          },
-          billingAddress: {
-            name: 'John Doe',
-            street: '123 Main Street',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '10001',
-            country: 'USA'
-          },
           paymentMethod: {
             type: 'jazzcash',
             brand: 'jazzcash'
@@ -101,8 +168,9 @@ const OrderDetails = ({ orderId }: OrderDetailsProps) => {
             ]
           }
         };
-        
-        setOrder(mockOrder);
+
+        const orderWithRealAddress = getOrderWithRealAddress(mockOrder);
+        setOrder(orderWithRealAddress);
         setLoading(false);
       } catch (err) {
         setError('Failed to load order details');
@@ -180,6 +248,33 @@ const OrderDetails = ({ orderId }: OrderDetailsProps) => {
       style: 'currency',
       currency: 'PKR'
     }).format(amount);
+  };
+
+  const getAddressTypeBadge = (addressType?: string) => {
+    if (!addressType) return null;
+    
+    const typeConfig: { [key: string]: { label: string; color: string } } = {
+      home: { label: 'Home', color: '#3498db' },
+      work: { label: 'Work', color: '#27ae60' },
+      other: { label: 'Other', color: '#95a5a6' }
+    };
+    
+    const config = typeConfig[addressType] || typeConfig.other;
+    
+    return (
+      <span 
+        className="address-type-badge"
+        style={{ backgroundColor: config.color }}
+      >
+        {config.label}
+      </span>
+    );
+  };
+
+  // Function to handle address editing
+  const handleEditAddress = () => {
+    // Redirect to address management page or open address modal
+    window.location.href = '/checkout/address';
   };
 
   if (loading) {
@@ -263,20 +358,57 @@ const OrderDetails = ({ orderId }: OrderDetailsProps) => {
 
       {/* Shipping Information */}
       <div className="order-section">
-        <h2>Shipping Information</h2>
+        <div className="section-header">
+          <h2>Shipping Information</h2>
+          <button 
+            className="edit-address-btn"
+            onClick={handleEditAddress}
+          >
+            Edit Address
+          </button>
+        </div>
         <div className="address-card">
-          <strong>{order.shippingAddress.name}</strong>
+          <div className="address-header">
+            <strong>{order.shippingAddress.name}</strong>
+            {getAddressTypeBadge(order.shippingAddress.addressType)}
+            {order.shippingAddress.isDefault && (
+              <span className="default-badge">Default</span>
+            )}
+          </div>
           <p>{order.shippingAddress.street}</p>
           <p>
             {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}
           </p>
           <p>{order.shippingAddress.country}</p>
           {order.shippingAddress.phone && (
-            <p className="contact-info">Phone: {order.shippingAddress.phone}</p>
+            <p className="contact-info">
+              <span className="contact-label">Phone:</span> {order.shippingAddress.phone}
+            </p>
           )}
           {order.shippingAddress.email && (
-            <p className="contact-info">Email: {order.shippingAddress.email}</p>
+            <p className="contact-info">
+              <span className="contact-label">Email:</span> {order.shippingAddress.email}
+            </p>
           )}
+        </div>
+      </div>
+
+      {/* Billing Information */}
+      <div className="order-section">
+        <h2>Billing Information</h2>
+        <div className="address-card">
+          <div className="address-header">
+            <strong>{order.billingAddress.name}</strong>
+            {getAddressTypeBadge(order.billingAddress.addressType)}
+          </div>
+          <p>{order.billingAddress.street}</p>
+          <p>
+            {order.billingAddress.city}, {order.billingAddress.state} {order.billingAddress.zipCode}
+          </p>
+          <p>{order.billingAddress.country}</p>
+          <div className="billing-note">
+            <small>Same as shipping address</small>
+          </div>
         </div>
       </div>
 
@@ -359,8 +491,8 @@ const OrderDetails = ({ orderId }: OrderDetailsProps) => {
         <button className="btn-secondary" onClick={() => window.print()}>
           Print Order
         </button>
-        <button className="btn-secondary" onClick={() => window.history.back()}>
-         <Link href={"/checkout/payment"}> Back to Orders</Link>
+        <button className="btn-secondary">
+          <Link href="/checkout/payment">Back to Orders</Link>
         </button>
         {order.status === 'delivered' && (
           <button className="btn-primary">
