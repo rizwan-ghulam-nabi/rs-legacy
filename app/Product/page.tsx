@@ -160,13 +160,14 @@ const ProductCard = React.memo(({
         >
           <AddToCart 
             product={{
-              id: product.id.toString(),
+              id: product.id,
               name: product.name,
               price: pricePKR,
               image: product.image,
               currency: "PKR",
               size:"sm"
             }}
+            size="sm"
           />
         </div>
       </div>
@@ -218,14 +219,15 @@ const ProductCard = React.memo(({
           >
             <AddToCart 
               product={{
-                id: product.id.toString(),
+                id: product.id,
                 name: product.name,
                 price: pricePKR,
                 image: product.image,
                 currency: "PKR",
                 size:"sm"
               }}
-              variant="icon"
+              size="md"
+              // variant="icon"
             />
           </div>
         </div>

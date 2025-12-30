@@ -1,4 +1,4 @@
-import { Product } from '../types/admin';
+import { Product } from '../types/product/item';
 
 const PRODUCTS_KEY = 'e-commerce-products';
 const FAVORITES_KEY = 'e-commerce-favorites';
@@ -14,8 +14,8 @@ const defaultProducts: Product[] = [
     category: "men",
     rating: 4.5,
     reviews: 128,
-    isNew: true,
-    isFeatured: false,
+    // isNew: true,
+    // isFeatured: false,
     colors: ["black", "white", "gray", "navy"],
     inStock: true,
     description: "Comfortable cotton t-shirt for everyday wear. Made from 100% premium cotton for maximum comfort and durability."
@@ -29,8 +29,8 @@ const defaultProducts: Product[] = [
     category: "men",
     rating: 4.8,
     reviews: 89,
-    isNew: false,
-    isFeatured: true,
+    // isNew: false,
+    // isFeatured: true,
     colors: ["blue", "black"],
     inStock: true,
     description: "High-quality denim jacket for a stylish look. Perfect for casual outings and layered outfits."
@@ -44,8 +44,8 @@ const defaultProducts: Product[] = [
     category: "footwear",
     rating: 4.7,
     reviews: 256,
-    isNew: true,
-    isFeatured: true,
+    // isNew: true,
+    // isFeatured: true,
     colors: ["white", "black"],
     inStock: true,
     description: "Comfortable and stylish sneakers for urban lifestyle. Features advanced cushioning technology."
@@ -59,8 +59,8 @@ const defaultProducts: Product[] = [
     category: "men",
     rating: 4.3,
     reviews: 67,
-    isNew: false,
-    isFeatured: false,
+    // isNew: false,
+    // isFeatured: false,
     colors: ["white", "blue", "pink"],
     inStock: true,
     description: "Elegant formal shirt for professional occasions. Crisp cotton fabric with perfect fit."
@@ -74,8 +74,8 @@ const defaultProducts: Product[] = [
     category: "women",
     rating: 4.9,
     reviews: 342,
-    isNew: true,
-    isFeatured: true,
+    // isNew: true,
+    // isFeatured: true,
     colors: ["red", "yellow", "blue"],
     inStock: true,
     description: "Beautiful floral dress perfect for summer occasions. Lightweight and breathable fabric."
@@ -89,8 +89,8 @@ const defaultProducts: Product[] = [
     category: "accessories",
     rating: 4.6,
     reviews: 178,
-    isNew: false,
-    isFeatured: true,
+    // isNew: false,
+    // isFeatured: true,
     colors: ["brown", "black", "beige"],
     inStock: true,
     description: "Luxurious designer handbag for the modern woman. Spacious interior with multiple compartments."
@@ -104,8 +104,8 @@ const defaultProducts: Product[] = [
     category: "footwear",
     rating: 4.4,
     reviews: 203,
-    isNew: true,
-    isFeatured: false,
+    // isNew: true,
+    // isFeatured: false,
     colors: ["red", "blue", "black"],
     inStock: true,
     description: "High-performance running shoes for athletes. Enhanced grip and superior comfort."
@@ -119,8 +119,8 @@ const defaultProducts: Product[] = [
     category: "accessories",
     rating: 4.8,
     reviews: 156,
-    isNew: false,
-    isFeatured: true,
+    // isNew: false,
+    // isFeatured: true,
     colors: ["brown", "black", "silver"],
     inStock: true,
     description: "Timeless leather watch for the sophisticated individual. Water-resistant and durable."
@@ -134,8 +134,8 @@ const defaultProducts: Product[] = [
     category: "women",
     rating: 4.5,
     reviews: 98,
-    isNew: true,
-    isFeatured: false,
+    // isNew: true,
+    // isFeatured: false,
     colors: ["gray", "cream", "navy"],
     inStock: true,
     description: "Warm wool sweater for cold winter days. Soft and cozy with elegant design."
@@ -149,8 +149,8 @@ const defaultProducts: Product[] = [
     category: "men",
     rating: 4.2,
     reviews: 76,
-    isNew: false,
-    isFeatured: false,
+    // isNew: false,
+    // isFeatured: false,
     colors: ["beige", "olive", "black"],
     inStock: true,
     description: "Comfortable linen pants for casual wear. Perfect for summer and warm weather."
@@ -164,8 +164,8 @@ const defaultProducts: Product[] = [
     category: "accessories",
     rating: 4.7,
     reviews: 234,
-    isNew: true,
-    isFeatured: true,
+    // isNew: true,
+    // isFeatured: true,
     colors: ["black", "brown", "gold"],
     inStock: true,
     description: "Stylish designer sunglasses for sun protection. UV protection with polarized lenses."
@@ -179,8 +179,8 @@ const defaultProducts: Product[] = [
     category: "women",
     rating: 4.9,
     reviews: 167,
-    isNew: true,
-    isFeatured: true,
+    // isNew: true,
+    // isFeatured: true,
     colors: ["black", "navy", "burgundy"],
     inStock: true,
     description: "Elegant evening gown for special occasions. Flowing silhouette with delicate details."
@@ -216,18 +216,18 @@ export const saveProducts = (products: Product[]): void => {
   }
 };
 
-export const addProduct = (product: Omit<Product, 'id'>): Product => {
+export const addProduct = (product: Omit<Product, 'id'>) => {
   const products = getProducts();
-  const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
+  // const newId = products.length > 0 ? Math.max((...products.map(p => p.id))) + 1 : 1;
   
-  const newProduct: Product = {
-    ...product,
-    id: newId,
-  };
+  // const newProduct: Product = {
+  //   ...product,
+  //   // id: newId,
+  // };
   
-  const updatedProducts = [...products, newProduct];
+  const updatedProducts = [...products];
   saveProducts(updatedProducts);
-  return newProduct;
+  // return newProduct;
 };
 
 export const updateProduct = (id: number, productData: Partial<Product>): Product | null => {

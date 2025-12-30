@@ -1,6 +1,4 @@
-// components/Header.tsx - FULLY TRANSPARENT WITH BLUR
 "use client";
-
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';

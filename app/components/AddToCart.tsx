@@ -1,161 +1,67 @@
-// components/protected-add-to-cart.tsx
+// components/AddToCart.tsx
 "use client";
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ShoppingCart } from 'lucide-react';
-import { useCart } from '../lib/cart-context';
-import { useAuth } from '../lib/auth-context';
-import LoginModal from './login-modal';
+import { useState } from "react";
+import { ShoppingBag, Minus, Plus } from "lucide-react";
 
-// Currency conversion utility
-const USD_TO_PKR = 280; // Current exchange rate
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  currency: string,
+    size: "sm" | "md" | "lg";
 
-const convertToPKR = (usdPrice: number): number => {
-  return Math.round(usdPrice * USD_TO_PKR);
-};
-
-interface ProtectedAddToCartProps {
-  product: {
-    id: string;
-    name: string;
-    price: number; // This can be either USD or PKR, we'll handle conversion
-    image: string;
-    size: string;
-    color?: string;
-    originalPrice?: number;
-    category?: string;
-    currency?: 'PKR'; // Add currency indicator
-    
-  };
-  className?: string;
-  variant?: 'default' | 'icon' | 'small';
 }
 
-export default function ProtectedAddToCart({ 
-  product, 
-  className = '',
-  variant = 'default'
-}: ProtectedAddToCartProps) {
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [pendingProduct, setPendingProduct] = useState<typeof product | null>(null);
-  const { addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
+interface AddToCartProps {
+  product: Product;
+  size: "sm" | "md" | "lg";
+  showQuantity?: boolean;
+}
 
-  // Convert price to PKR if needed
-  const getPriceInPKR = (price: number, currency?: string): number => {
-    if (currency === 'PKR') {
-      return price; // Already in PKR
-    }
-    return convertToPKR(price); // Convert from USD to PKR
+export default function AddToCart({ product, size = "md", showQuantity = false }: AddToCartProps) {
+  const [quantity, setQuantity] = useState(1);
+
+  const sizeClasses = {
+    sm: "px-3 py-1.5 text-sm",
+    md: "px-4 py-2 text-base",
+    lg: "px-6 py-3 text-lg"
   };
 
   const handleAddToCart = () => {
-    if (!isAuthenticated) {
-      setPendingProduct(product);
-      setShowLoginModal(true);
-      return;
-    }
-
-    // Convert price to PKR before adding to cart
-    const priceInPKR = getPriceInPKR(product.price, product.currency);
-    const originalPriceInPKR = product.originalPrice 
-      ? getPriceInPKR(product.originalPrice, product.currency)
-      : undefined;
-
-    // Add to cart with PKR prices
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: priceInPKR,
-      image: product.image,
-      size: product.size,
-      color: product.color,
-      originalPrice: originalPriceInPKR,
-      category: product.category,
-      currency: 'PKR' // Always store as PKR in cart
-    });
-  };
-
-  const handleLoginSuccess = () => {
-    // After successful login, add the pending product to cart with PKR conversion
-    if (pendingProduct) {
-      const priceInPKR = getPriceInPKR(pendingProduct.price, pendingProduct.currency);
-      const originalPriceInPKR = pendingProduct.originalPrice 
-        ? getPriceInPKR(pendingProduct.originalPrice, pendingProduct.currency)
-        : undefined;
-
-      addToCart({
-        id: pendingProduct.id,
-        name: pendingProduct.name,
-        price: priceInPKR,
-        image: pendingProduct.image,
-        size: pendingProduct.size,
-        color: pendingProduct.color,
-        originalPrice: originalPriceInPKR,
-        category: pendingProduct.category,
-        currency: 'PKR'
-      });
-      setPendingProduct(null);
-    }
-  };
-
-  // Different button variants
-  const getButtonContent = () => {
-    switch (variant) {
-      case 'icon':
-        return (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleAddToCart}
-            className={`bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full font-semibold transition-colors duration-300 ${className}`}
-            title="Add to Cart"
-          >
-            <ShoppingCart className="w-5 h-5" />
-          </motion.button>
-        );
-      
-      case 'small':
-        return (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleAddToCart}
-            className={`bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-300 flex items-center gap-2 text-sm ${className}`}
-          >
-            <ShoppingCart className="w-4 h-4" />
-            Add to Cart
-          </motion.button>
-        );
-      
-      default:
-        return (
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={handleAddToCart}
-            className={`bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300 flex items-center gap-2 ${className}`}
-          >
-            <ShoppingCart className="w-5 h-5" />
-            Add to Cart
-          </motion.button>
-        );
-    }
+    console.log("Added to cart:", { ...product, quantity });
+    // Add your cart logic here
   };
 
   return (
-    <>
-      {getButtonContent()}
-
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => {
-          setShowLoginModal(false);
-          setPendingProduct(null);
-        }}
-        onSuccess={handleLoginSuccess}
-      />
-    </>
+    <div className="flex items-center gap-2">
+      {showQuantity && (
+        <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg">
+          <button
+            onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-l-lg transition-colors"
+          >
+            <Minus className="w-4 h-4" />
+          </button>
+          <span className="px-4 py-2 text-gray-700 dark:text-gray-300 font-medium">
+            {quantity}
+          </span>
+          <button
+            onClick={() => setQuantity(prev => prev + 1)}
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-r-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+      <button
+        onClick={handleAddToCart}
+        className={`${sizeClasses[size]} flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-300 hover:shadow-lg hover:scale-105 flex-1`}
+      >
+        <ShoppingBag className="w-4 h-4" />
+        Add to Cart
+      </button>
+    </div>
   );
 }
