@@ -214,60 +214,50 @@
 // }
 
 
+
+
 // components/categories/CategoriesGrid.tsx
 'use client';
 
+import { useState } from 'react';
+import CategoryCard from './CategoryCard';
+import { getCategories } from '../../data/categories';
+import { Filter } from 'lucide-react';
+
 import { Category } from '../../types/category';
-import  CategoryCard  from './CategoryCard';
 
 interface CategoriesGridProps {
-  categories: Category[];
-  title?: string;
-  description?: string;
+  initialCategories?: Category[];
 }
 
-export default function CategoriesGrid({ 
-  categories, 
-  title = "Our Collections",
-  description = "Discover our carefully curated categories"
-}: CategoriesGridProps) {
-  return (
-    <div className="w-full">
-      {/* Header */}
-      <div className="text-center mb-12">
-        <h2 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
-          {title}
-        </h2>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto font-light">
-          {description}
-        </p>
-      </div>
+export default function CategoriesGrid({ initialCategories = [] }: CategoriesGridProps) {
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-      {/* Categories Grid - Full Width Responsive */}
-      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8">
-        {categories.map((category) => (
+  return (
+    <>
+      <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3' : 'space-y-4'} gap-6`}>
+        {initialCategories.map((category: Category) => (
           <CategoryCard 
             key={category.id} 
-            category={category}
-            // className="w-full h-full"
+            category={category} 
+            // viewMode={viewMode}
           />
         ))}
       </div>
 
-      {/* Empty State */}
-      {categories.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">💫</div>
-          <h3 className="text-2xl font-semibold text-gray-700 mb-2">
-            Coming Soon
-          </h3>
-          <p className="text-gray-500 max-w-md mx-auto">
-            We're working on bringing you amazing collections. Check back soon for updates!
+      {initialCategories.length === 0 && (
+        <div className="text-center py-16 bg-white rounded-3xl shadow-lg border border-gray-100">
+          <Filter className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-gray-900 mb-2">No categories found</h3>
+          <p className="text-gray-600 max-w-md mx-auto">
+            Try adjusting your filters or search term to find what you're looking for.
           </p>
+          <button className="mt-6 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl hover:from-blue-600 hover:to-cyan-600 transition-all">
+            Clear All Filters
+          </button>
         </div>
       )}
-    </div>
+    </>
   );
 }
-
 

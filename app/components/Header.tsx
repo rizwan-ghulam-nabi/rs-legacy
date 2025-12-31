@@ -6,6 +6,7 @@ import { ShoppingCart, Search, User, Menu, X, ChevronDown, Sparkles, Star, Gem, 
 import { useCart } from '../lib/cart-context';
 import { useAuth } from '../lib/auth-context';
 import { productService, Product } from '../services/productService';
+import gsap from 'gsap';
 
 interface UserData {
   id: string;
@@ -28,7 +29,7 @@ interface SearchProduct {
   rating: number;
 }
 
-// Constants - REMOVED DROPDOWN_LINKS
+// Constants
 const NAVIGATION_ITEMS = [
   { 
     name: 'Home', 
@@ -62,7 +63,7 @@ export default function Header() {
   const router = useRouter();
   const { user, logout } = useAuth();
   
-  // State - REMOVED isDropdownOpen state
+  // State
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -80,16 +81,115 @@ export default function Header() {
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
-  // Refs - REMOVED dropdownRef
+  // Refs
   const searchRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // GSAP Refs
+  const headerRef = useRef<HTMLElement>(null);
+  const logoRef = useRef<HTMLAnchorElement>(null);
+  const navItemsRef = useRef<(HTMLAnchorElement | null)[]>([]);
+  const actionButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+  const clockRef = useRef<HTMLDivElement>(null);
+  const mobileMenuContainerRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const gradientBorderRef = useRef<HTMLDivElement>(null);
+  const particlesRef = useRef<HTMLDivElement>(null);
+  const cartBadgeRef = useRef<HTMLSpanElement>(null);
 
   // Set client-side flag
   useEffect(() => {
     setIsClient(true);
+    
+    // Initialize GSAP context
+    const ctx = gsap.context(() => {
+      // Initial animations when component mounts
+      gsap.fromTo(headerRef.current,
+        { y: -100, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1.2, ease: "power3.out", delay: 0.3 }
+      );
+      
+      if (logoRef.current) {
+        gsap.fromTo(logoRef.current,
+          { scale: 0.8, rotation: -10, opacity: 0 },
+          { scale: 1, rotation: 0, opacity: 1, duration: 1, ease: "back.out(1.7)", delay: 0.5 }
+        );
+      }
+      
+      // Staggered nav items animation
+      gsap.fromTo(navItemsRef.current.filter(Boolean),
+        { y: 20, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          stagger: 0.1,
+          ease: "power3.out",
+          delay: 0.8
+        }
+      );
+      
+      // Staggered action buttons animation
+      gsap.fromTo(actionButtonsRef.current.filter(Boolean),
+        { scale: 0, opacity: 0 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.6,
+          stagger: 0.15,
+          ease: "elastic.out(1, 0.5)",
+          delay: 1.2
+        }
+      );
+      
+      // Animate the gradient border
+      if (gradientBorderRef.current) {
+        gsap.to(gradientBorderRef.current, {
+          backgroundPosition: "200% 0",
+          duration: 20,
+          repeat: -1,
+          ease: "linear"
+        });
+      }
+      
+      // Animate floating particles
+      if (particlesRef.current) {
+        const particles = particlesRef.current.children;
+        gsap.to(particles, {
+          y: () => gsap.utils.random(-20, 20),
+          x: () => gsap.utils.random(-10, 10),
+          rotation: () => gsap.utils.random(-180, 180),
+          duration: () => gsap.utils.random(3, 6),
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          stagger: 0.2
+        });
+      }
+    });
+    
+    return () => ctx.revert();
   }, []);
+
+  // Cart badge animation when item count changes
+  useEffect(() => {
+    if (cartBadgeRef.current && state.itemCount > 0) {
+      const tl = gsap.timeline();
+      
+      tl.to(cartBadgeRef.current, {
+        scale: 1.5,
+        duration: 0.3,
+        ease: "power2.out"
+      })
+      .to(cartBadgeRef.current, {
+        scale: 1,
+        duration: 0.3,
+        ease: "elastic.out(1, 0.5)"
+      });
+    }
+  }, [state.itemCount]);
 
   // Combined effects for better performance
   useEffect(() => {
@@ -112,11 +212,28 @@ export default function Header() {
     // Mouse tracking
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
+      
+      // Animate background gradient based on mouse position
+      gsap.to(headerRef.current, {
+        backgroundPosition: `${(e.clientX / window.innerWidth) * 100}% ${(e.clientY / window.innerHeight) * 100}%`,
+        duration: 0.5,
+        ease: "power2.out"
+      });
     };
     window.addEventListener('mousemove', handleMouseMove);
 
-    // Scroll effect
-    const handleScroll = () => setScrolled(window.scrollY > 10);
+    // Scroll effect with GSAP
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 10;
+      setScrolled(isScrolled);
+      
+      gsap.to(headerRef.current, {
+        backdropFilter: isScrolled ? "blur(20px)" : "blur(10px)",
+        boxShadow: isScrolled ? "0 20px 40px rgba(147, 51, 234, 0.15)" : "none",
+        duration: 0.4,
+        ease: "power2.out"
+      });
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
@@ -134,11 +251,11 @@ export default function Header() {
     originalPrice: product.originalPrice,
     image: product.image,
     category: product.category,
-    inStock: true, // You might want to add this field to your Product interface
+    inStock: true,
     rating: product.rating
   });
 
-  // Enhanced Search Functionality - UPDATED TO USE PRODUCT SERVICE
+  // Enhanced Search Functionality
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -150,14 +267,25 @@ export default function Header() {
     setIsSearching(true);
     
     try {
-      // Use the product service to search products
       const foundProducts = await productService.searchProducts(query);
-      
-      // Convert Product[] to SearchProduct[]
       const searchProducts = foundProducts.map(convertToSearchProduct);
       
       setSearchResults(searchProducts);
       setShowSearchResults(true);
+      
+      // Animate search results appearance
+      if (searchContainerRef.current) {
+        gsap.fromTo(searchContainerRef.current.querySelectorAll('.search-result-item'),
+          { y: 20, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.4,
+            stagger: 0.05,
+            ease: "power3.out"
+          }
+        );
+      }
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
@@ -170,7 +298,6 @@ export default function Header() {
     const query = e.target.value;
     setSearchQuery(query);
     
-    // Debounce the search
     const timeoutId = setTimeout(() => {
       performSearch(query);
     }, 300);
@@ -183,43 +310,138 @@ export default function Header() {
     
     if (!searchQuery.trim()) return;
 
-    // If we have search results, navigate to the first product
     if (searchResults.length > 0) {
       const firstResult = searchResults[0];
       router.push(`/products/${firstResult.id}`);
     } else {
-      // If no results found, redirect to products page with search query
       router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
     }
     
-    // Reset search state
     closeSearch();
   }, [searchQuery, searchResults, router]);
 
   const handleProductClick = useCallback((productId: string) => {
-    router.push(`/products/${productId}`);
-    closeSearch();
+    // Animate product click
+    const productElement = document.querySelector(`[data-product-id="${productId}"]`);
+    if (productElement) {
+      gsap.to(productElement, {
+        scale: 0.95,
+        duration: 0.2,
+        yoyo: true,
+        repeat: 1,
+        onComplete: () => {
+          router.push(`/products/${productId}`);
+          closeSearch();
+        }
+      });
+    } else {
+      router.push(`/products/${productId}`);
+      closeSearch();
+    }
   }, [router]);
 
-  const closeSearch = useCallback(() => {
-    setIsSearchOpen(false);
-    setSearchQuery('');
-    setSearchResults([]);
-    setShowSearchResults(false);
-    setIsSearching(false);
+  const animateSearchOpen = useCallback(() => {
+    if (!searchRef.current) return;
+    
+    const tl = gsap.timeline();
+    
+    tl.to(searchRef.current, {
+      y: 0,
+      opacity: 1,
+      duration: 0.6,
+      ease: "power3.out"
+    })
+    .fromTo(searchInputRef.current,
+      { scale: 0.9, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.7)" },
+      "-=0.3"
+    );
+    
+    // Hide other elements
+    gsap.to(logoRef.current, {
+      opacity: 0,
+      scale: 0.95,
+      duration: 0.3,
+      ease: "power2.inOut"
+    });
+    
+    gsap.to(navItemsRef.current.filter(Boolean), {
+      opacity: 0,
+      x: -20,
+      duration: 0.3,
+      stagger: 0.05,
+      ease: "power2.inOut"
+    });
+    
+    gsap.to(actionButtonsRef.current.filter(Boolean), {
+      opacity: 0,
+      scale: 0.8,
+      duration: 0.3,
+      stagger: 0.05,
+      ease: "power2.inOut"
+    });
   }, []);
 
-  // Click outside handler - REMOVED dropdownRef from targets
+  const animateSearchClose = useCallback(() => {
+    if (!searchRef.current) return;
+    
+    const tl = gsap.timeline();
+    
+    tl.to(searchRef.current, {
+      y: -20,
+      opacity: 0,
+      duration: 0.4,
+      ease: "power3.in"
+    })
+    .then(() => {
+      // Show other elements
+      gsap.to(logoRef.current, {
+        opacity: 1,
+        scale: 1,
+        duration: 0.5,
+        ease: "power3.out"
+      });
+      
+      gsap.to(navItemsRef.current.filter(Boolean), {
+        opacity: 1,
+        x: 0,
+        duration: 0.5,
+        stagger: 0.05,
+        ease: "power3.out"
+      });
+      
+      gsap.to(actionButtonsRef.current.filter(Boolean), {
+        opacity: 1,
+        scale: 1,
+        duration: 0.5,
+        stagger: 0.05,
+        ease: "elastic.out(1, 0.5)"
+      });
+    });
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    if (isSearchOpen) {
+      animateSearchClose();
+      setTimeout(() => {
+        setIsSearchOpen(false);
+        setSearchQuery('');
+        setSearchResults([]);
+        setShowSearchResults(false);
+        setIsSearching(false);
+      }, 400);
+    }
+  }, [isSearchOpen, animateSearchClose]);
+
+  // Click outside handler
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Close search if clicking outside
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         if (isSearchOpen) {
           closeSearch();
         }
       }
 
-      // Close other dropdowns
       const targets = [
         { ref: userDropdownRef, condition: isUserDropdownOpen },
         { ref: mobileMenuRef, condition: isMenuOpen }
@@ -245,7 +467,7 @@ export default function Header() {
     closeAllMenus();
   }, [pathname]);
 
-  // Memoized values - REMOVED filteredDropdownLinks
+  // Memoized values
   const filteredNavigation = useMemo(() => 
     NAVIGATION_ITEMS.filter(item => 
       isMenuOpen || pathname !== item.href
@@ -269,44 +491,117 @@ export default function Header() {
     getUserProfileImage() !== null
   , [getUserProfileImage]);
 
-  // Core functions - REMOVED toggleDropdown
+  // Core functions
   const closeAllMenus = useCallback(() => {
-    setIsMenuOpen(false);
-    setIsUserDropdownOpen(false);
-    closeSearch();
-  }, [closeSearch]);
+    if (isMenuOpen) {
+      gsap.to(mobileMenuContainerRef.current, {
+        y: -50,
+        opacity: 0,
+        duration: 0.4,
+        ease: "power3.in",
+        onComplete: () => {
+          setIsMenuOpen(false);
+        }
+      });
+    }
+    
+    if (isUserDropdownOpen) {
+      const dropdownMenu = userDropdownRef.current?.querySelector('.user-dropdown-menu');
+      if (dropdownMenu) {
+        gsap.to(dropdownMenu, {
+          scale: 0.9,
+          opacity: 0,
+          duration: 0.3,
+          ease: "power2.in",
+          onComplete: () => {
+            setIsUserDropdownOpen(false);
+          }
+        });
+      } else {
+        setIsUserDropdownOpen(false);
+      }
+    }
+    
+    if (isSearchOpen) {
+      closeSearch();
+    }
+  }, [isMenuOpen, isUserDropdownOpen, isSearchOpen, closeSearch]);
 
   const toggleMenu = useCallback(() => {
-    setIsMenuOpen(prev => {
-      if (!prev) {
-        setIsUserDropdownOpen(false);
-        closeSearch();
-      }
-      return !prev;
-    });
-  }, [closeSearch]);
+    if (isMenuOpen) {
+      closeAllMenus();
+    } else {
+      closeSearch();
+      setIsUserDropdownOpen(false);
+      
+      setIsMenuOpen(true);
+      setTimeout(() => {
+        if (mobileMenuContainerRef.current) {
+          gsap.fromTo(mobileMenuContainerRef.current,
+            { y: -50, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.6,
+              ease: "power3.out"
+            }
+          );
+          
+          // Animate mobile menu items
+          gsap.fromTo(mobileMenuContainerRef.current.querySelectorAll('.mobile-menu-item'),
+            { x: -30, opacity: 0 },
+            {
+              x: 0,
+              opacity: 1,
+              duration: 0.5,
+              stagger: 0.08,
+              ease: "power3.out",
+              delay: 0.2
+            }
+          );
+        }
+      }, 10);
+    }
+  }, [isMenuOpen, closeSearch, closeAllMenus]);
 
   const toggleUserDropdown = useCallback(() => {
-    setIsUserDropdownOpen(prev => {
-      if (prev) return !prev;
+    if (isUserDropdownOpen) {
+      closeAllMenus();
+    } else {
       closeSearch();
-      return true;
-    });
-  }, [closeSearch]);
+      setIsMenuOpen(false);
+      
+      setIsUserDropdownOpen(true);
+      setTimeout(() => {
+        const dropdown = userDropdownRef.current?.querySelector('.user-dropdown-menu');
+        if (dropdown) {
+          gsap.fromTo(dropdown,
+            { scale: 0.9, opacity: 0, y: -10 },
+            {
+              scale: 1,
+              opacity: 1,
+              y: 0,
+              duration: 0.4,
+              ease: "power3.out"
+            }
+          );
+        }
+      }, 10);
+    }
+  }, [isUserDropdownOpen, closeSearch]);
 
-  // FIXED: Simplified toggleSearch function
   const toggleSearch = useCallback(() => {
     if (isSearchOpen) {
       closeSearch();
     } else {
       closeAllMenus();
       setIsSearchOpen(true);
-      // Focus input after a small delay to ensure it's rendered
       setTimeout(() => {
+        animateSearchOpen();
         searchInputRef.current?.focus();
-      }, 100);
+      }, 10);
     }
-  }, [isSearchOpen, closeAllMenus, closeSearch]);
+  }, [isSearchOpen, closeAllMenus, closeSearch, animateSearchOpen]);
 
   const handleAccountClick = useCallback(() => {
     if (user) {
@@ -322,15 +617,34 @@ export default function Header() {
       logout();
       setIsUserDropdownOpen(false);
       closeAllMenus();
-      router.push('/');
+      
+      // Animate logout
+      gsap.to(headerRef.current, {
+        opacity: 0.8,
+        duration: 0.3,
+        yoyo: true,
+        repeat: 1,
+        onComplete: () => {
+          router.push('/');
+        }
+      });
     } catch (error) {
       console.error('Logout error:', error);
     }
   }, [router, closeAllMenus, logout]);
 
   const handleNavigation = useCallback((href: string) => {
-    closeAllMenus();
-    setTimeout(() => router.push(href), 50);
+    // Animate navigation
+    gsap.to(headerRef.current, {
+      y: -5,
+      duration: 0.2,
+      yoyo: true,
+      repeat: 1,
+      onComplete: () => {
+        closeAllMenus();
+        setTimeout(() => router.push(href), 50);
+      }
+    });
   }, [router, closeAllMenus]);
 
   const handleMobileButton = useCallback((action: () => void) => {
@@ -338,13 +652,63 @@ export default function Header() {
     setTimeout(action, 50);
   }, [closeAllMenus]);
 
+  // Enhanced hover animations for desktop nav items
+  const handleNavHoverEnter = useCallback((index: number) => {
+    const navItem = navItemsRef.current[index];
+    if (navItem) {
+      gsap.to(navItem, {
+        scale: 1.05,
+        y: -2,
+        duration: 0.3,
+        ease: "power2.out"
+      });
+    }
+  }, []);
+
+  const handleNavHoverLeave = useCallback((index: number) => {
+    const navItem = navItemsRef.current[index];
+    if (navItem) {
+      gsap.to(navItem, {
+        scale: 1,
+        y: 0,
+        duration: 0.3,
+        ease: "power2.out"
+      });
+    }
+  }, []);
+
+  // Enhanced hover animations for action buttons
+  const handleButtonHoverEnter = useCallback((index: number) => {
+    const button = actionButtonsRef.current[index];
+    if (button) {
+      gsap.to(button, {
+        scale: 1.1,
+        rotation: 5,
+        duration: 0.3,
+        ease: "elastic.out(1, 0.5)"
+      });
+    }
+  }, []);
+
+  const handleButtonHoverLeave = useCallback((index: number) => {
+    const button = actionButtonsRef.current[index];
+    if (button) {
+      gsap.to(button, {
+        scale: 1,
+        rotation: 0,
+        duration: 0.3,
+        ease: "power2.out"
+      });
+    }
+  }, []);
+
   // JSX Components as variables for better organization
   const HeaderSkeleton = () => (
     <header className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-2xl">
       <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 bg-gray-300/20 rounded-2xl animate-pulse" />
+            <div className="w-14 h-14 bg-gray-300/50 rounded-2xl animate-pulse" />
             <div className="flex flex-col">
               <div className="h-8 w-32 bg-gray-300/20 rounded animate-pulse" />
               <div className="h-4 w-24 bg-gray-300/20 rounded animate-pulse mt-1" />
@@ -379,13 +743,38 @@ export default function Header() {
 
   const Logo = () => (
     <Link 
+      ref={logoRef}
       href="/" 
       className={`flex items-center space-x-4 group relative transition-all duration-500 ${
-        isSearchOpen ? '  opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
+        isSearchOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
       }`}
-      onClick={closeAllMenus}
-      onMouseEnter={() => setActiveHover('logo')}
-      onMouseLeave={() => setActiveHover(null)}
+      onClick={(e) => {
+        closeAllMenus();
+        gsap.to(e.currentTarget, {
+          scale: 0.95,
+          duration: 0.2,
+          yoyo: true,
+          repeat: 1
+        });
+      }}
+      onMouseEnter={() => {
+        setActiveHover('logo');
+        gsap.to(logoRef.current, {
+          scale: 1.05,
+          rotation: 2,
+          duration: 0.4,
+          ease: "elastic.out(1, 0.5)"
+        });
+      }}
+      onMouseLeave={() => {
+        setActiveHover(null);
+        gsap.to(logoRef.current, {
+          scale: 1,
+          rotation: 0,
+          duration: 0.4,
+          ease: "power2.out"
+        });
+      }}
     >
       <div className="relative">
         <div className="absolute -inset-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-40 transition-all duration-1000 group-hover:scale-110" />
@@ -419,11 +808,25 @@ export default function Header() {
   );
 
   const DigitalClock = () => (
-    <div className="hidden md:flex items-center justify-center">
+    <div ref={clockRef} className="hidden md:flex items-center justify-center">
       <div 
         className="relative group cursor-pointer"
-        onMouseEnter={() => setIsClockHovered(true)}
-        onMouseLeave={() => setIsClockHovered(false)}
+        onMouseEnter={() => {
+          setIsClockHovered(true);
+          gsap.to(clockRef.current, {
+            scale: 1.05,
+            duration: 0.3,
+            ease: "power2.out"
+          });
+        }}
+        onMouseLeave={() => {
+          setIsClockHovered(false);
+          gsap.to(clockRef.current, {
+            scale: 1,
+            duration: 0.3,
+            ease: "power2.out"
+          });
+        }}
       >
         <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl blur-lg transform scale-110 transition-all duration-500 group-hover:scale-125 group-hover:opacity-40" />
         
@@ -449,7 +852,7 @@ export default function Header() {
     </div>
   );
 
-  const NavigationLink = useCallback(({ item, isMobile = false }: { item: typeof NAVIGATION_ITEMS[0], isMobile?: boolean }) => {
+  const NavigationLink = useCallback(({ item, isMobile = false, index = 0 }: { item: typeof NAVIGATION_ITEMS[0], isMobile?: boolean, index?: number }) => {
     const Icon = item.icon;
     const isActive = pathname === item.href;
 
@@ -457,7 +860,7 @@ export default function Header() {
       return (
         <button
           onClick={() => handleNavigation(item.href)}
-          className={`w-full flex items-center space-x-4 py-4 px-6 font-semibold rounded-2xl transition-all duration-500 border border-white/10 dark:border-gray-700/10 group backdrop-blur-xl ${
+          className={`w-full flex items-center space-x-4 py-4 px-6 font-semibold rounded-2xl transition-all duration-500 border border-white/10 dark:border-gray-700/10 group backdrop-blur-xl mobile-menu-item ${
             isActive
               ? 'text-white bg-gradient-to-r from-purple-500/30 to-blue-500/30'
               : 'text-gray-300 dark:text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-blue-500/20'
@@ -483,15 +886,30 @@ export default function Header() {
 
     return (
       <Link
+        // ref={el => navItemsRef.current[index] = el}
         href={item.href}
         className={`relative px-6 py-4 font-semibold transition-all duration-700 group ${
           isActive 
             ? 'text-white' 
             : 'text-gray-300 dark:text-gray-300 hover:text-white'
         }`}
-        onMouseEnter={() => setActiveHover(item.name)}
-        onMouseLeave={() => setActiveHover(null)}
-        onClick={closeAllMenus}
+        onMouseEnter={() => {
+          setActiveHover(item.name);
+          handleNavHoverEnter(index);
+        }}
+        onMouseLeave={() => {
+          setActiveHover(null);
+          handleNavHoverLeave(index);
+        }}
+        onClick={(e) => {
+          closeAllMenus();
+          gsap.to(e.currentTarget, {
+            scale: 0.95,
+            duration: 0.2,
+            yoyo: true,
+            repeat: 1
+          });
+        }}
       >
         <div className={`absolute inset-0 rounded-2xl transition-all duration-700 backdrop-blur-lg ${
           isActive 
@@ -534,7 +952,7 @@ export default function Header() {
         )}
       </Link>
     );
-  }, [pathname, activeHover, closeAllMenus, handleNavigation]);
+  }, [pathname, activeHover, closeAllMenus, handleNavigation, handleNavHoverEnter, handleNavHoverLeave]);
 
   const UserAvatar = useCallback(({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
     const sizeClasses = {
@@ -596,7 +1014,7 @@ export default function Header() {
 
         {/* Enhanced Search Results Dropdown */}
         {showSearchResults && searchQuery.trim() && (
-          <div className="absolute top-full left-0 right-0 mt-4 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/10 py-4 z-70 overflow-hidden">
+          <div ref={searchContainerRef} className="absolute top-full left-0 right-0 mt-4 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/10 py-4 z-70 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-black/30 to-gray-900/30" />
             <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
             
@@ -612,8 +1030,23 @@ export default function Header() {
                   {searchResults.map((product) => (
                     <button
                       key={product.id}
+                      data-product-id={product.id}
                       onClick={() => handleProductClick(product.id)}
-                      className="w-full flex items-center space-x-4 px-6 py-4 text-left hover:bg-purple-500/10 transition-all duration-300 group border-b border-white/5 last:border-b-0"
+                      className="w-full flex items-center space-x-4 px-6 py-4 text-left hover:bg-purple-500/10 transition-all duration-300 group border-b border-white/5 last:border-b-0 search-result-item"
+                      onMouseEnter={(e) => {
+                        gsap.to(e.currentTarget, {
+                          x: 5,
+                          duration: 0.3,
+                          ease: "power2.out"
+                        });
+                      }}
+                      onMouseLeave={(e) => {
+                        gsap.to(e.currentTarget, {
+                          x: 0,
+                          duration: 0.3,
+                          ease: "power2.out"
+                        });
+                      }}
                     >
                       <img
                         src={product.image}
@@ -702,20 +1135,23 @@ export default function Header() {
       {isClient && <AnimatedBackground />}
 
       {/* FULLY TRANSPARENT HEADER */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
-        scrolled 
-          ? 'bg-black/20 dark:bg-gray-900/20 backdrop-blur-3xl shadow-2xl shadow-purple-500/5' 
-          : 'bg-transparent backdrop-blur-2xl'
-      }`}>
+      <header 
+        ref={headerRef}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
+          scrolled 
+            ? 'bg-black/20 dark:bg-gray-900/20 backdrop-blur-3xl shadow-2xl shadow-purple-500/5' 
+            : 'bg-transparent backdrop-blur-2xl'
+        }`}
+      >
         
         {/* Elegant Top Border with Gradient Flow */}
-        <div className="h-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 relative overflow-hidden opacity-80">
+        <div ref={gradientBorderRef} className="h-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 relative overflow-hidden opacity-80">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
         </div>
         
         {/* Enhanced Floating Particles */}
         {isClient && (
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div ref={particlesRef} className="absolute inset-0 overflow-hidden pointer-events-none">
             {[...Array(12)].map((_, i) => (
               <div
                 key={i}
@@ -741,17 +1177,20 @@ export default function Header() {
             {/* Enhanced Desktop Navigation - Hide when search is open */}
             {!isSearchOpen && (
               <nav className="hidden xl:flex items-center space-x-2 relative">
-                {filteredNavigation.map((item) => (
-                  <NavigationLink key={item.name} item={item} />
+                {filteredNavigation.map((item, index) => (
+                  <NavigationLink key={item.name} item={item} index={index} />
                 ))}
               </nav>
             )}
 
             {/* Enhanced Action Buttons */}
             <div className="hidden md:flex items-center space-x-2">
-              {/* Search Button - FIXED: Now properly toggles */}
+              {/* Search Button */}
               <button 
+                // ref={el => actionButtonsRef.current[0] = el}
                 onClick={toggleSearch}
+                onMouseEnter={() => handleButtonHoverEnter(0)}
+                onMouseLeave={() => handleButtonHoverLeave(0)}
                 className={`relative p-3 transition-all duration-500 group ${
                   isSearchOpen 
                     ? 'text-purple-300 scale-110' 
@@ -771,7 +1210,10 @@ export default function Header() {
               {/* User Account Button */}
               <div className="relative" ref={userDropdownRef}>
                 <button 
+                  // ref={el => actionButtonsRef.current[1] = el}
                   onClick={handleAccountClick}
+                  onMouseEnter={() => handleButtonHoverEnter(1)}
+                  onMouseLeave={() => handleButtonHoverLeave(1)}
                   className={`relative flex items-center space-x-3 px-4 py-2 transition-all duration-500 group rounded-2xl ${
                     isSearchOpen
                       ? 'opacity-0 scale-95 pointer-events-none' 
@@ -810,7 +1252,7 @@ export default function Header() {
                 
                 {/* Enhanced User Dropdown Menu */}
                 {isUserDropdownOpen && user && (
-                  <div className="absolute top-full right-0 mt-2 w-80 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/10 py-4 z-60 overflow-hidden">
+                  <div className="absolute top-full right-0 mt-2 w-80 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/10 py-4 z-60 overflow-hidden user-dropdown-menu">
                     <div className="absolute inset-0 bg-gradient-to-br from-black/30 to-gray-900/30" />
                     <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
                     
@@ -841,6 +1283,20 @@ export default function Header() {
                       <button
                         onClick={() => handleMobileButton(() => router.push('/profile'))}
                         className="w-full flex items-center space-x-3 px-6 py-3 text-gray-300 hover:text-purple-300 transition-all duration-300 group hover:bg-purple-500/10"
+                        onMouseEnter={(e) => {
+                          gsap.to(e.currentTarget, {
+                            x: 5,
+                            duration: 0.3,
+                            ease: "power2.out"
+                          });
+                        }}
+                        onMouseLeave={(e) => {
+                          gsap.to(e.currentTarget, {
+                            x: 0,
+                            duration: 0.3,
+                            ease: "power2.out"
+                          });
+                        }}
                       >
                         <User className="w-4 h-4 transform group-hover:scale-110 transition-transform duration-300" />
                         <span>My Profile</span>
@@ -849,6 +1305,20 @@ export default function Header() {
                       <button
                         onClick={() => handleMobileButton(() => router.push('/settings'))}
                         className="w-full flex items-center space-x-3 px-6 py-3 text-gray-300 hover:text-purple-300 transition-all duration-300 group hover:bg-purple-500/10"
+                        onMouseEnter={(e) => {
+                          gsap.to(e.currentTarget, {
+                            x: 5,
+                            duration: 0.3,
+                            ease: "power2.out"
+                          });
+                        }}
+                        onMouseLeave={(e) => {
+                          gsap.to(e.currentTarget, {
+                            x: 0,
+                            duration: 0.3,
+                            ease: "power2.out"
+                          });
+                        }}
                       >
                         <Settings className="w-4 h-4 transform group-hover:scale-110 transition-transform duration-300" />
                         <span>Account Settings</span>
@@ -859,6 +1329,20 @@ export default function Header() {
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center space-x-3 px-6 py-3 text-red-400 hover:text-red-300 transition-all duration-300 group hover:bg-red-500/10"
+                        onMouseEnter={(e) => {
+                          gsap.to(e.currentTarget, {
+                            x: 5,
+                            duration: 0.3,
+                            ease: "power2.out"
+                          });
+                        }}
+                        onMouseLeave={(e) => {
+                          gsap.to(e.currentTarget, {
+                            x: 0,
+                            duration: 0.3,
+                            ease: "power2.out"
+                          });
+                        }}
                       >
                         <LogOut className="w-4 h-4 transform group-hover:scale-110 transition-transform duration-300" />
                         <span>Sign Out</span>
@@ -871,6 +1355,7 @@ export default function Header() {
               {/* Enhanced Cart Button - Only show when user is logged in */}
               {user && (
                 <Link 
+                  // ref={el => actionButtonsRef.current[2] = el}
                   href="/cart" 
                   className={`relative p-3 transition-all duration-500 group ${
                     isSearchOpen
@@ -878,6 +1363,8 @@ export default function Header() {
                       : 'opacity-100 scale-100 text-gray-300 hover:text-purple-300'
                   }`}
                   onClick={closeAllMenus}
+                  onMouseEnter={() => handleButtonHoverEnter(2)}
+                  onMouseLeave={() => handleButtonHoverLeave(2)}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500 backdrop-blur-lg" />
                   
@@ -890,7 +1377,10 @@ export default function Header() {
                   <ShoppingCart className="w-5 h-5 relative z-10 group-hover:scale-110 transition-transform duration-500" />
                   
                   {state.itemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-black rounded-full w-5 h-5 flex items-center justify-center shadow-2xl z-20 animate-bounce-scale">
+                    <span 
+                      ref={cartBadgeRef}
+                      className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-black rounded-full w-5 h-5 flex items-center justify-center shadow-2xl z-20"
+                    >
                       {state.itemCount}
                     </span>
                   )}
@@ -900,7 +1390,10 @@ export default function Header() {
 
             {/* Enhanced Mobile Menu Button */}
             <button
+              // ref={el => actionButtonsRef.current[3] = el}
               onClick={toggleMenu}
+              onMouseEnter={() => handleButtonHoverEnter(3)}
+              onMouseLeave={() => handleButtonHoverLeave(3)}
               className={`md:hidden relative p-2 transition-all duration-500 group ${
                 isSearchOpen
                   ? 'opacity-0 scale-95 pointer-events-none' 
@@ -933,7 +1426,7 @@ export default function Header() {
               ref={mobileMenuRef}
               className="md:hidden absolute top-full left-0 right-0 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl border-t border-white/10 shadow-2xl z-50 overflow-y-auto max-h-[80vh]"
             >
-              <div className="py-8 relative">
+              <div ref={mobileMenuContainerRef} className="py-8 relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/5 to-cyan-500/5" />
                 
                 <div className="absolute top-4 right-4">
@@ -967,7 +1460,7 @@ export default function Header() {
 
                 {/* User Info in Mobile Menu */}
                 {user && (
-                  <div className="px-6 py-4 border-b border-white/10 mb-4 relative z-10">
+                  <div className="px-6 py-4 border-b border-white/10 mb-4 relative z-10 mobile-menu-item">
                     <div className="flex items-center space-x-4">
                       <div className="relative">
                         <UserAvatar size="lg" />
@@ -992,7 +1485,7 @@ export default function Header() {
                 )}
 
                 {/* Enhanced Mobile Search */}
-                <div className="px-6 mb-8 relative">
+                <div className="px-6 mb-8 relative mobile-menu-item">
                   <form onSubmit={handleSearchSubmit}>
                     <div className="relative">
                       <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-3xl blur-lg transform scale-105" />
@@ -1015,7 +1508,7 @@ export default function Header() {
 
                 {/* Mobile Navigation Links */}
                 <div className="space-y-2 px-6 relative">
-                  {filteredNavigation.map((item) => (
+                  {filteredNavigation.map((item, index) => (
                     <NavigationLink key={item.name} item={item} isMobile={true} />
                   ))}
                 </div>
@@ -1026,7 +1519,7 @@ export default function Header() {
                     <>
                       <button 
                         onClick={() => handleMobileButton(() => router.push('/profile'))}
-                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10"
+                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 mobile-menu-item"
                       >
                         <User className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                         <span className="font-semibold text-sm">Profile</span>
@@ -1034,7 +1527,7 @@ export default function Header() {
                       
                       <button 
                         onClick={() => handleMobileButton(() => router.push('/settings'))}
-                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10"
+                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 mobile-menu-item"
                       >
                         <Settings className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                         <span className="font-semibold text-sm">Settings</span>
@@ -1042,7 +1535,7 @@ export default function Header() {
                       
                       <button 
                         onClick={() => handleMobileButton(handleLogout)}
-                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-red-400 hover:text-red-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-red-500/10 group shadow-2xl border border-white/10"
+                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-red-400 hover:text-red-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-red-500/10 group shadow-2xl border border-white/10 mobile-menu-item"
                       >
                         <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                         <span className="font-semibold text-sm">Logout</span>
@@ -1051,7 +1544,7 @@ export default function Header() {
                   ) : (
                     <button 
                       onClick={() => handleMobileButton(handleAccountClick)}
-                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10"
+                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 mobile-menu-item"
                     >
                       <User className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                       <span className="font-semibold text-sm">Login</span>
@@ -1062,7 +1555,7 @@ export default function Header() {
                   {user && (
                     <button 
                       onClick={() => handleNavigation('/cart')}
-                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 relative"
+                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 relative mobile-menu-item"
                     >
                       <ShoppingCart className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
                       <span className="font-semibold text-sm">Cart</span>

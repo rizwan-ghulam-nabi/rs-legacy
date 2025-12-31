@@ -154,7 +154,7 @@ function ProductContent({ params }: { params: Promise<{ id: string }> }) {
                 <div className="prose dark:prose-invert max-w-none">
                   <h3 className="text-gray-900 dark:text-white">Shipping Information</h3>
                   <ul className="text-gray-700 dark:text-gray-300">
-                    <li>Free shipping on orders over $50</li>
+                    <li>Free shipping on orders over PKR500</li>
                     <li>Standard delivery: 3-5 business days</li>
                     <li>Express delivery: 1-2 business days</li>
                     <li>International shipping available</li>

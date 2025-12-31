@@ -27,10 +27,10 @@ export default function FilterSidebar({
   }, [filters]);
 
   const priceRanges = [
-    { label: 'Under $25', value: [0, 25] as [number, number] },
-    { label: '$25 - $50', value: [25, 50] as [number, number] },
-    { label: '$50 - $100', value: [50, 100] as [number, number] },
-    { label: 'Over $100', value: [100, 1000] as [number, number] },
+    { label: 'Under PKR25', value: [0, 25] as [number, number] },
+    { label: 'PKR250 - PKR500', value: [25, 50] as [number, number] },
+    { label: 'PKR500 - PKR1000', value: [50, 100] as [number, number] },
+    { label: 'Over PKR1000', value: [100, 1000] as [number, number] },
   ];
 
   const sortOptions = [

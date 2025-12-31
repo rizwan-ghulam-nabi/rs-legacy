@@ -69,7 +69,7 @@ export default function ContactPage() {
   const faqItems = [
     {
       question: "What are your shipping options?",
-      answer: "We offer standard shipping (3-5 business days), express shipping (1-2 business days), and overnight shipping. Free shipping is available on orders over $50."
+      answer: "We offer standard shipping (3-5 business days), express shipping (1-2 business days), and overnight shipping. Free shipping is available on orders over PKR500."
     },
     {
       question: "How can I track my order?",

@@ -303,7 +303,7 @@ const ProductInfo: React.FC<ProductInfoProps> = ({
             <Truck className="w-8 h-8 text-gray-400" />
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">Free Shipping</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">On orders over $50</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">On orders over PKR500</p>
             </div>
           </div>
           <div className="flex items-center space-x-3">

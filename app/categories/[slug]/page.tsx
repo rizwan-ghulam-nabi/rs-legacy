@@ -41,7 +41,7 @@ export default function CategoryDetailClient({ category }: CategoryDetailClientP
             <div className={styles.placeholderContent}>
               <h3>Product Name</h3>
               <p>Product description will appear here</p>
-              <div className={styles.placeholderPrice}>$99.99</div>
+              <div className={styles.placeholderPrice}>1000PKR</div>
             </div>
           </div>
           <div className={styles.placeholderCard}>
@@ -49,7 +49,7 @@ export default function CategoryDetailClient({ category }: CategoryDetailClientP
             <div className={styles.placeholderContent}>
               <h3>Another Product</h3>
               <p>More products coming soon</p>
-              <div className={styles.placeholderPrice}>$79.99</div>
+              <div className={styles.placeholderPrice}>200PKR</div>
             </div>
           </div>
         </div>
