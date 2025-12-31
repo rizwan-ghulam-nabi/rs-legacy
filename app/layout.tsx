@@ -24,16 +24,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
-         {/* <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> */}
-      </head>
       <body className={inter.className}
       suppressHydrationWarning={true}
       >
         <div className="min-h-screen bg-gray-50">
           <AuthProvider>
           <CartProvider>
-          
             <Header/>
             <OrderProvider>
              <WishlistProvider>
