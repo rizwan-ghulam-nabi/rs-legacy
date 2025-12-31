@@ -134,7 +134,7 @@ const userSchema = new mongoose.Schema<IUser>({
 });
 
 // Indexes
-userSchema.index({ email: 1 });
+// userSchema.index({ email: 1 });
 userSchema.index({ createdAt: 1 });
 userSchema.index({ role: 1 });
 userSchema.index({ isActive: 1 });

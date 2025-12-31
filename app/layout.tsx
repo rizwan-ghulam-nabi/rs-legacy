@@ -7,6 +7,7 @@ import Footer from './components/Footer'
 
 import { AuthProvider } from './lib/auth-context'
 import { OrderProvider } from './lib/order-context'
+import { WishlistProvider } from './lib/wishlist-context'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -24,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-         <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+         {/* <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script> */}
       </head>
       <body className={inter.className}
       suppressHydrationWarning={true}
@@ -35,9 +36,10 @@ export default function RootLayout({
           
             <Header/>
             <OrderProvider>
+             <WishlistProvider>
           {children}
+              </WishlistProvider>
             </OrderProvider>
-
           <Footer/>
           </CartProvider>
           </AuthProvider>
