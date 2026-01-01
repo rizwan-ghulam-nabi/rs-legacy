@@ -1,6 +1,6 @@
 // data/categories.ts
 import { metadata } from '../layout';
-import { Categories, Category, CategoryStats, FilterOptions } from '../types/category';
+import { Categories, CategoryStats, FilterOptions } from '../types/category';
 
 // Sample categories data with modern, diverse content
 export const categories: Categories[] = [

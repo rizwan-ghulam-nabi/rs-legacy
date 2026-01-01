@@ -1,202 +1,146 @@
-// components/CategoryCard.tsx (updated)
+// components/categories/CategoryCard.tsx
 'use client';
 
-import { Category } from '../../types/category';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import styles from '../CategoryCard.module.css';
+import Link from 'next/link';
+import { ArrowUpRight, Star, Users, Sparkles, TrendingUp } from 'lucide-react';
+import { Categories } from '../../types/category';
 
 interface CategoryCardProps {
-  category: Category;
+  category: Categories;
 }
 
 export default function CategoryCard({ category }: CategoryCardProps) {
-  const router = useRouter();
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleClick = () => {
-    router.push(`/categories/${category.slug}`);
+  // Helper function to get status icon
+  const getStatusIcon = () => {
+    switch (category.status) {
+      case 'trending':
+        return <TrendingUp className="w-3 h-3 text-orange-500" />;
+      case 'new':
+        return <Sparkles className="w-3 h-3 text-blue-500" />;
+      case 'featured':
+        return <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />;
+      default:
+        return null;
+    }
   };
 
   return (
-    <div 
-      className={`${styles.categoryCard} ${isHovered ? styles.hovered : ''}`}
-      onClick={handleClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+    <Link
+      href={`/categories/${category.slug}`}
+      className="group relative block"
     >
-      <div className={styles.cardImage}>
-        <img 
-          src={category.image} 
-          alt={category.name}
-          className={`${styles.image} ${isHovered ? styles.zoomed : ''}`}
-        />
-        <div 
-          className={styles.gradientOverlay}
-          style={{ background: category.gradient }}
-        />
-        <div className={styles.iconBadge}>
-          <span className={styles.icon}>{category.icon}</span>
+      {/* Gradient border effect */}
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-300"></div>
+      
+      <div className="relative bg-white rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100 overflow-hidden group-hover:shadow-xl transition-all duration-300">
+        {/* Category Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-2xl shadow-lg"
+              style={{
+                background: category.colorScheme?.gradient || 
+                  `linear-gradient(135deg, ${category.colorScheme?.primary || '#3B82F6'} 0%, ${category.colorScheme?.secondary || '#1E40AF'} 100%)`,
+              }}
+            >
+              <span className="text-white">{category.emoji}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base truncate">
+                  {category.name}
+                </h3>
+                {getStatusIcon()}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                  {category.tag}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                  <span className="text-xs font-bold">{category.rating}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        {category.isFeatured && (
-          <div className={styles.featuredBadge}>
-            <span>Featured</span>
+
+        {/* Category Image (if available) */}
+        {(category.imageUrl || category.coverImage) && (
+          <div className="mb-4 rounded-xl overflow-hidden">
+            <div className="relative h-32 sm:h-40 bg-gradient-to-br from-gray-200 to-gray-300">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-4xl">{category.emoji}</span>
+              </div>
+              {/* You could also use actual images when available:
+              <img 
+                src={category.imageUrl} 
+                alt={category.name}
+                className="w-full h-full object-cover"
+              />
+              */}
+            </div>
           </div>
         )}
+
+        {/* Category Description */}
+        <p className="text-xs sm:text-sm text-gray-600 mb-4 line-clamp-2">
+          {category.shortDescription || category.description}
+        </p>
+
+        {/* Stats */}
+        <div className="flex items-center justify-between text-xs sm:text-sm text-gray-500 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-1 bg-blue-50 rounded-lg">
+              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500" />
+            </div>
+            <span>{category.items.toLocaleString()} items</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="p-1 bg-green-50 rounded-lg">
+              <Users className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+            </div>
+            {/* <span>{category.curators.toLocaleString()} curators</span> */}
+          </div>
+        </div>
+
+        {/* Popular Tags */}
+        {category.popularTags && category.popularTags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-4">
+            {category.popularTags.slice(0, 3).map((tag, index) => (
+              <span 
+                key={index}
+                className="px-2 py-0.5 bg-gray-50 text-gray-700 rounded-lg text-xs"
+              >
+                {tag}
+              </span>
+            ))}
+            {category.popularTags.length > 3 && (
+              <span className="px-2 py-0.5 bg-gray-50 text-gray-500 rounded-lg text-xs">
+                +{category.popularTags.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="px-2 py-1 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg">
+              <span className="text-xs font-bold text-green-600">+{category.growth}%</span>
+            </div>
+            <span className="text-xs text-gray-500">Growth</span>
+          </div>
+          
+          <div className="flex items-center gap-1 text-sm font-medium text-gray-600 group-hover:text-blue-600">
+            <span className="hidden sm:inline">Explore</span>
+            <div className="p-1.5 bg-gray-100 rounded-lg group-hover:bg-gradient-to-r group-hover:from-blue-500 group-hover:to-cyan-500 group-hover:text-white transition-all duration-300">
+              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
+            </div>
+          </div>
+        </div>
       </div>
-
-      <div className={styles.cardContent}>
-        <h3 className={styles.categoryName}>{category.name}</h3>
-        <p className={styles.categoryDescription}>{category.description}</p>
-        
-        <div className={styles.categoryStats}>
-          <span className={styles.productCount}>
-            {category.productCount} products
-          </span>
-        </div>
-
-        <div className={styles.tagsContainer}>
-          {category.tags.map((tag, index) => (
-            <span key={index} className={styles.tag}>
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        <div className={`${styles.actionButton} ${isHovered ? styles.active : ''}`}>
-          <span>Explore Category</span>
-          <svg 
-            width="16" 
-            height="16" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2"
-          >
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </div>
-      </div>
-    </div>
+    </Link>
   );
 }
-
-
-// // components/categories/CategoryCard.tsx
-// import { Heart, Star, ShoppingBag, ArrowRight } from 'lucide-react';
-// import { Category } from '../../types/category';
-
-// interface CategoryCardProps {
-//   category: Category;
-//   viewMode?: 'grid' | 'list';
-// }
-
-// export default function CategoryCard({ category, viewMode = 'grid' }: CategoryCardProps) {
-//   if (viewMode === 'list') {
-//     return (
-//       <div className="group bg-white rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 overflow-hidden">
-//         <div className="flex items-center p-6">
-//           <div className="w-24 h-24 rounded-xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center flex-shrink-0">
-//             <div className="text-2xl">{category.emoji}</div>
-//           </div>
-          
-//           <div className="flex-1 ml-6">
-//             <div className="flex items-start justify-between mb-2">
-//               <div>
-//                 <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-//                   {category.name}
-//                 </h3>
-//                 <p className="text-gray-600 mt-1 line-clamp-2">{category.description}</p>
-//               </div>
-//               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-//                 <Heart className="w-5 h-5 text-gray-400 hover:text-red-500" />
-//               </button>
-//             </div>
-            
-//             <div className="flex items-center justify-between mt-4">
-//               <div className="flex items-center gap-4">
-//                 <span className="flex items-center gap-1 text-sm text-gray-600">
-//                   <ShoppingBag className="w-4 h-4" />
-//                   {category.items} items
-//                 </span>
-//                 <span className="flex items-center gap-1 text-sm text-gray-600">
-//                   <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-//                   {category.rating}
-//                 </span>
-//                 <span className="text-sm px-3 py-1 bg-gradient-to-r from-blue-50 to-cyan-50 text-blue-600 rounded-full">
-//                   {category.tag}
-//                 </span>
-//               </div>
-              
-//               <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl hover:from-blue-600 hover:to-cyan-600 transition-all transform group-hover:-translate-x-1">
-//                 Explore
-//                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-//               </button>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   // Grid View (default)
-//   return (
-//     <div className="group relative">
-//       <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl blur opacity-0 group-hover:opacity-20 transition duration-500"></div>
-      
-//       <div className="relative bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
-//         {/* Card Header with Image */}
-//         <div className="relative h-48 overflow-hidden">
-//           <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-500"></div>
-//           <div className="absolute inset-0 flex items-center justify-center">
-//             <div className="text-6xl transform group-hover:scale-110 transition-transform duration-300">
-//               {category.emoji}
-//             </div>
-//           </div>
-//           <div className="absolute top-4 right-4">
-//             <button className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors">
-//               <Heart className="w-5 h-5 text-white" />
-//             </button>
-//           </div>
-//           <div className="absolute bottom-4 left-4">
-//             <span className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-sm font-medium rounded-full">
-//               {category.tag}
-//             </span>
-//           </div>
-//         </div>
-        
-//         {/* Card Content */}
-//         <div className="p-6">
-//           <div className="flex items-start justify-between mb-3">
-//             <div>
-//               <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-//                 {category.name}
-//               </h3>
-//               <p className="text-gray-600 mt-1 text-sm line-clamp-2">{category.description}</p>
-//             </div>
-//             <div className="flex items-center gap-1 px-2 py-1 bg-amber-50 rounded-lg">
-//               <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-//               <span className="font-bold text-amber-700">{category.rating}</span>
-//             </div>
-//           </div>
-          
-//           <div className="flex items-center justify-between mt-6">
-//             <div className="flex items-center gap-4 text-sm text-gray-600">
-//               <span className="flex items-center gap-1">
-//                 <ShoppingBag className="w-4 h-4" />
-//                 {category.items}
-//               </span>
-//               <span>•</span>
-//               <span>{category.curators} curators</span>
-//             </div>
-            
-//             <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-medium rounded-xl hover:from-blue-600 hover:to-cyan-600 transition-all transform group-hover:-translate-x-1">
-//               View
-//               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-//             </button>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }

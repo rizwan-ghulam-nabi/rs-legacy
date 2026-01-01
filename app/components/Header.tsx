@@ -1,12 +1,15 @@
 "use client";
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingCart, Search, User, Menu, X, ChevronDown, Sparkles, Star, Gem, Crown, Zap, Cloud, Clock, LogOut, Settings, Loader2 } from 'lucide-react';
+import { ShoppingCart, Search, User, Menu, X, ChevronDown, Sparkles, Star, Gem, Crown, Zap, Cloud, Clock, LogOut, Settings, Loader2, Home, Package, Layers, Mail, Heart, Bell, Sun, Moon } from 'lucide-react';
 import { useCart } from '../lib/cart-context';
 import { useAuth } from '../lib/auth-context';
 import { productService, Product } from '../services/productService';
 import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 interface UserData {
   id: string;
@@ -27,35 +30,74 @@ interface SearchProduct {
   category: string;
   inStock: boolean;
   rating: number;
+  slug?: string;
 }
 
-// Constants
+// Modern navigation items with larger sizing
 const NAVIGATION_ITEMS = [
   { 
     name: 'Home', 
     href: '/', 
-    icon: Sparkles,
-    description: 'Begin your journey'
+    icon: Home,
+    description: 'Modern luxury',
+    color: 'bg-gradient-to-r from-blue-500 to-cyan-400',
+    accentColor: 'text-blue-400'
   },
   { 
     name: 'Products', 
     href: '/Product', 
-    icon: Gem,
-    description: 'Discover excellence'
+    icon: Package,
+    description: 'Premium collection',
+    color: 'bg-gradient-to-r from-purple-500 to-pink-400',
+    accentColor: 'text-purple-400'
   },
   { 
     name: 'Categories', 
     href: '/categories', 
-    icon: Cloud,
-    description: 'Explore collections'
+    icon: Layers,
+    description: 'Curated styles',
+    color: 'bg-gradient-to-r from-emerald-500 to-teal-400',
+    accentColor: 'text-emerald-400'
   },
   { 
     name: 'Contact', 
     href: '/contact', 
-    icon: Zap,
-    description: 'Connect with us'
+    icon: Mail,
+    description: 'Get in touch',
+    color: 'bg-gradient-to-r from-amber-500 to-orange-400',
+    accentColor: 'text-amber-400'
   },
 ];
+
+// Site metadata
+const SITE_METADATA = {
+  name: 'RS-LEGACY',
+  description: 'Modern Luxury & Premium Fashion',
+  tagline: 'Elevated Style'
+};
+
+// Memoized Skeleton Loader with proper sizing
+const HeaderSkeleton = memo(() => (
+  <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800">
+    <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+      <div className="flex justify-between items-center h-20"> {/* Increased height */}
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 bg-gradient-to-r from-blue-500/20 to-cyan-400/20 rounded-xl animate-pulse" />
+          <div className="hidden sm:flex flex-col">
+            <div className="h-8 w-32 bg-gradient-to-r from-slate-700 to-slate-800 rounded animate-pulse" />
+            <div className="h-4 w-24 bg-gradient-to-r from-slate-700 to-slate-800 rounded animate-pulse mt-2" />
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 bg-slate-800 rounded-full animate-pulse" />
+          <div className="w-12 h-12 bg-slate-800 rounded-full animate-pulse" />
+        </div>
+      </div>
+    </div>
+  </header>
+));
+
+HeaderSkeleton.displayName = 'HeaderSkeleton';
 
 export default function Header() {
   const { state } = useCart();
@@ -69,17 +111,22 @@ export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [scrolled, setScrolled] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [activeHover, setActiveHover] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
-  const [currentDate, setCurrentDate] = useState('');
-  const [isClockHovered, setIsClockHovered] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const [activeSection, setActiveSection] = useState('');
   
   // Enhanced Search States
   const [searchResults, setSearchResults] = useState<SearchProduct[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  
+  // Performance optimization
+  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const scrollProgressRef = useRef<HTMLDivElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Refs
   const searchRef = useRef<HTMLDivElement>(null);
@@ -87,164 +134,249 @@ export default function Header() {
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   
-  // GSAP Refs
-  const headerRef = useRef<HTMLElement>(null);
+  // Modern refs
+  const headerRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLAnchorElement>(null);
   const navItemsRef = useRef<(HTMLAnchorElement | null)[]>([]);
-  const actionButtonsRef = useRef<(HTMLButtonElement | null)[]>([]);
-  const clockRef = useRef<HTMLDivElement>(null);
-  const mobileMenuContainerRef = useRef<HTMLDivElement>(null);
-  const searchContainerRef = useRef<HTMLDivElement>(null);
-  const gradientBorderRef = useRef<HTMLDivElement>(null);
-  const particlesRef = useRef<HTMLDivElement>(null);
-  const cartBadgeRef = useRef<HTMLSpanElement>(null);
+  const actionButtonsRef = useRef<(HTMLButtonElement | HTMLAnchorElement | null)[]>([]);
+  const underlineRef = useRef<HTMLDivElement>(null);
+  const glassEffectRef = useRef<HTMLDivElement>(null);
+  const magneticRefs = useRef<(HTMLButtonElement | HTMLAnchorElement)[]>([]);
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const floatingElementsRef = useRef<HTMLDivElement>(null);
 
-  // Set client-side flag
+  // Initialize client-side
   useEffect(() => {
     setIsClient(true);
+    setHasLoaded(true);
     
-    // Initialize GSAP context
-    const ctx = gsap.context(() => {
-      // Initial animations when component mounts
-      gsap.fromTo(headerRef.current,
-        { y: -100, opacity: 0 },
-        { y: 0, opacity: 1, duration: 1.2, ease: "power3.out", delay: 0.3 }
-      );
-      
-      if (logoRef.current) {
-        gsap.fromTo(logoRef.current,
-          { scale: 0.8, rotation: -10, opacity: 0 },
-          { scale: 1, rotation: 0, opacity: 1, duration: 1, ease: "back.out(1.7)", delay: 0.5 }
-        );
-      }
-      
-      // Staggered nav items animation
-      gsap.fromTo(navItemsRef.current.filter(Boolean),
-        { y: 20, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 0.8,
-          stagger: 0.1,
-          ease: "power3.out",
-          delay: 0.8
-        }
-      );
-      
-      // Staggered action buttons animation
-      gsap.fromTo(actionButtonsRef.current.filter(Boolean),
-        { scale: 0, opacity: 0 },
-        {
-          scale: 1,
-          opacity: 1,
-          duration: 0.6,
-          stagger: 0.15,
-          ease: "elastic.out(1, 0.5)",
-          delay: 1.2
-        }
-      );
-      
-      // Animate the gradient border
-      if (gradientBorderRef.current) {
-        gsap.to(gradientBorderRef.current, {
-          backgroundPosition: "200% 0",
-          duration: 20,
-          repeat: -1,
-          ease: "linear"
+    // Modern cursor effect
+    const handleMouseMove = (e: MouseEvent) => {
+      if (cursorRef.current) {
+        gsap.to(cursorRef.current, {
+          x: e.clientX,
+          y: e.clientY,
+          duration: 0.1,
+          ease: "power2.out"
         });
       }
-      
-      // Animate floating particles
-      if (particlesRef.current) {
-        const particles = particlesRef.current.children;
-        gsap.to(particles, {
-          y: () => gsap.utils.random(-20, 20),
-          x: () => gsap.utils.random(-10, 10),
-          rotation: () => gsap.utils.random(-180, 180),
-          duration: () => gsap.utils.random(3, 6),
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    // Floating elements animation
+    if (floatingElementsRef.current) {
+      const elements = floatingElementsRef.current.children;
+      Array.from(elements).forEach((el, i) => {
+        gsap.to(el, {
+          y: gsap.utils.random(-10, 10),
+          rotation: gsap.utils.random(-5, 5),
+          duration: gsap.utils.random(2, 4),
           repeat: -1,
           yoyo: true,
           ease: "sine.inOut",
-          stagger: 0.2
+          delay: i * 0.3
         });
-      }
-    });
-    
-    return () => ctx.revert();
+      });
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
   }, []);
 
-  // Cart badge animation when item count changes
+  // Modern GSAP animations with ScrollTrigger
   useEffect(() => {
-    if (cartBadgeRef.current && state.itemCount > 0) {
-      const tl = gsap.timeline();
-      
-      tl.to(cartBadgeRef.current, {
-        scale: 1.5,
-        duration: 0.3,
-        ease: "power2.out"
-      })
-      .to(cartBadgeRef.current, {
-        scale: 1,
-        duration: 0.3,
-        ease: "elastic.out(1, 0.5)"
+    if (!isClient || !hasLoaded) return;
+
+    const ctx = gsap.context(() => {
+      // Header entrance with modern slide-in
+      gsap.fromTo(headerRef.current,
+        { 
+          y: -100, 
+          opacity: 0,
+          scale: 0.98 
+        },
+        {
+          y: 0,
+          opacity: 1,
+          scale: 1,
+          duration: 0.8,
+          ease: "power3.out",
+          delay: 0.2
+        }
+      );
+
+      // Logo animation with modern effects
+      gsap.fromTo(logoRef.current,
+        { 
+          scale: 0.8, 
+          opacity: 0,
+          filter: "blur(10px)" 
+        },
+        {
+          scale: 1,
+          opacity: 1,
+          filter: "blur(0px)",
+          duration: 1,
+          ease: "elastic.out(1.2, 0.5)",
+          delay: 0.4
+        }
+      );
+
+      // Scroll-triggered header transformation
+      ScrollTrigger.create({
+        trigger: document.body,
+        start: "top top",
+        end: "bottom bottom",
+        onUpdate: (self) => {
+          const progress = self.progress;
+          setScrollProgress(progress);
+          
+          // Modern header effects based on scroll
+          if (headerRef.current) {
+            const blurAmount = 8 + progress * 8;
+            const yOffset = progress * -5;
+            
+            gsap.to(headerRef.current, {
+              backdropFilter: `blur(${blurAmount}px)`,
+              y: yOffset,
+              duration: 0.3,
+              ease: "power2.out"
+            });
+            
+            // Make header more compact on scroll
+            if (progress > 0.1) {
+              gsap.to(headerRef.current, {
+                height: "4.5rem",
+                duration: 0.3
+              });
+            } else {
+              gsap.to(headerRef.current, {
+                height: "5.5rem",
+                duration: 0.3
+              });
+            }
+          }
+          
+          // Progress indicator
+          if (scrollProgressRef.current) {
+            gsap.to(scrollProgressRef.current, {
+              width: `${progress * 100}%`,
+              duration: 0.3,
+              ease: "power2.out"
+            });
+          }
+          
+          // Glass effect intensity
+          if (glassEffectRef.current) {
+            gsap.to(glassEffectRef.current, {
+              opacity: 0.2 + progress * 0.3,
+              duration: 0.3,
+              ease: "power2.out"
+            });
+          }
+        }
       });
+
+      // Magnetic button effects
+      magneticRefs.current.forEach((button) => {
+        if (!button) return;
+        
+        button.addEventListener('mousemove', (e: Event) => {
+          const mouseEvent = e as MouseEvent;
+          const rect = button.getBoundingClientRect();
+          const x = mouseEvent.clientX - rect.left - rect.width / 2;
+          const y = mouseEvent.clientY - rect.top - rect.height / 2;
+          
+          gsap.to(button, {
+            x: x * 0.3,
+            y: y * 0.3,
+            duration: 0.3,
+            ease: "power2.out"
+          });
+        });
+        
+        button.addEventListener('mouseleave', () => {
+          gsap.to(button, {
+            x: 0,
+            y: 0,
+            duration: 0.6,
+            ease: "elastic.out(1, 0.5)"
+          });
+        });
+      });
+
+      // Active section detection with Intersection Observer
+      const sections = document.querySelectorAll('section[id], main > div > section');
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setActiveSection(entry.target.id);
+            }
+          });
+        },
+        { threshold: 0.5 }
+      );
+
+      sections.forEach((section) => observer.observe(section));
+
+      return () => observer.disconnect();
+    });
+
+    return () => ctx.revert();
+  }, [isClient, hasLoaded]);
+
+  // Cart badge animation
+  useEffect(() => {
+    if (state.itemCount > 0) {
+      // Create floating particle effect
+      for (let i = 0; i < 3; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'absolute w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full';
+        headerRef.current?.appendChild(particle);
+        
+        const rect = document.querySelector('[data-cart-button]')?.getBoundingClientRect();
+        if (rect) {
+          gsap.set(particle, {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+            scale: 0
+          });
+          
+          gsap.to(particle, {
+            x: `+=${gsap.utils.random(-20, 20)}`,
+            y: `+=${gsap.utils.random(-20, 20)}`,
+            scale: 1,
+            opacity: 0,
+            duration: 0.6,
+            ease: "power2.out",
+            onComplete: () => particle.remove()
+          });
+        }
+      }
     }
   }, [state.itemCount]);
 
-  // Combined effects for better performance
+  // Scroll progress indicator
   useEffect(() => {
-    if (!isClient) return;
-
-    // DateTime effect
     const updateDateTime = () => {
       const now = new Date();
       setCurrentTime(now.toLocaleTimeString('en-US', {
-        hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
-      }));
-      setCurrentDate(now.toLocaleDateString('en-US', {
-        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'
+        hour: '2-digit',
+        minute: '2-digit'
       }));
     };
 
     updateDateTime();
-    const timeInterval = setInterval(updateDateTime, 1000);
+    const timeInterval = setInterval(updateDateTime, 60000);
 
-    // Mouse tracking
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-      
-      // Animate background gradient based on mouse position
-      gsap.to(headerRef.current, {
-        backgroundPosition: `${(e.clientX / window.innerWidth) * 100}% ${(e.clientY / window.innerHeight) * 100}%`,
-        duration: 0.5,
-        ease: "power2.out"
-      });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
+    return () => clearInterval(timeInterval);
+  }, []);
 
-    // Scroll effect with GSAP
-    const handleScroll = () => {
-      const isScrolled = window.scrollY > 10;
-      setScrolled(isScrolled);
-      
-      gsap.to(headerRef.current, {
-        backdropFilter: isScrolled ? "blur(20px)" : "blur(10px)",
-        boxShadow: isScrolled ? "0 20px 40px rgba(147, 51, 234, 0.15)" : "none",
-        duration: 0.4,
-        ease: "power2.out"
-      });
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      clearInterval(timeInterval);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [isClient]);
-
-  // Convert Product to SearchProduct
-  const convertToSearchProduct = (product: Product): SearchProduct => ({
+  // Search functionality
+  const convertToSearchProduct = useCallback((product: Product): SearchProduct => ({
     id: product.id.toString(),
     name: product.name,
     price: product.price,
@@ -252,10 +384,10 @@ export default function Header() {
     image: product.image,
     category: product.category,
     inStock: true,
-    rating: product.rating
-  });
+    rating: product.rating,
+    slug: product.name.toLowerCase().replace(/\s+/g, '-')
+  }), []);
 
-  // Enhanced Search Functionality
   const performSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
@@ -273,13 +405,18 @@ export default function Header() {
       setSearchResults(searchProducts);
       setShowSearchResults(true);
       
-      // Animate search results appearance
       if (searchContainerRef.current) {
-        gsap.fromTo(searchContainerRef.current.querySelectorAll('.search-result-item'),
-          { y: 20, opacity: 0 },
+        const items = searchContainerRef.current.querySelectorAll('.search-result-item');
+        gsap.fromTo(items,
+          { 
+            x: -20, 
+            opacity: 0,
+            scale: 0.95 
+          },
           {
-            y: 0,
+            x: 0,
             opacity: 1,
+            scale: 1,
             duration: 0.4,
             stagger: 0.05,
             ease: "power3.out"
@@ -292,27 +429,28 @@ export default function Header() {
     } finally {
       setIsSearching(false);
     }
-  }, []);
+  }, [convertToSearchProduct]);
 
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
     
-    const timeoutId = setTimeout(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
       performSearch(query);
     }, 300);
-    
-    return () => clearTimeout(timeoutId);
   }, [performSearch]);
 
   const handleSearchSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!searchQuery.trim()) return;
 
     if (searchResults.length > 0) {
       const firstResult = searchResults[0];
-      router.push(`/products/${firstResult.id}`);
+      router.push(`/products/${firstResult.slug || firstResult.id}`);
     } else {
       router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
     }
@@ -320,103 +458,47 @@ export default function Header() {
     closeSearch();
   }, [searchQuery, searchResults, router]);
 
-  const handleProductClick = useCallback((productId: string) => {
-    // Animate product click
-    const productElement = document.querySelector(`[data-product-id="${productId}"]`);
-    if (productElement) {
-      gsap.to(productElement, {
-        scale: 0.95,
-        duration: 0.2,
-        yoyo: true,
-        repeat: 1,
-        onComplete: () => {
-          router.push(`/products/${productId}`);
-          closeSearch();
-        }
-      });
-    } else {
-      router.push(`/products/${productId}`);
-      closeSearch();
-    }
-  }, [router]);
-
+  // Modern search animations
   const animateSearchOpen = useCallback(() => {
     if (!searchRef.current) return;
     
-    const tl = gsap.timeline();
+    gsap.to(headerRef.current, {
+      backgroundColor: 'rgba(15, 23, 42, 0.95)',
+      duration: 0.3,
+      ease: "power2.out"
+    });
     
-    tl.to(searchRef.current, {
-      y: 0,
-      opacity: 1,
-      duration: 0.6,
-      ease: "power3.out"
-    })
-    .fromTo(searchInputRef.current,
-      { scale: 0.9, opacity: 0 },
-      { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.7)" },
-      "-=0.3"
+    gsap.fromTo(searchRef.current,
+      { 
+        y: -30, 
+        opacity: 0,
+        scale: 0.9 
+      },
+      {
+        y: 0,
+        opacity: 1,
+        scale: 1,
+        duration: 0.4,
+        ease: "back.out(1.7)"
+      }
     );
-    
-    // Hide other elements
-    gsap.to(logoRef.current, {
-      opacity: 0,
-      scale: 0.95,
-      duration: 0.3,
-      ease: "power2.inOut"
-    });
-    
-    gsap.to(navItemsRef.current.filter(Boolean), {
-      opacity: 0,
-      x: -20,
-      duration: 0.3,
-      stagger: 0.05,
-      ease: "power2.inOut"
-    });
-    
-    gsap.to(actionButtonsRef.current.filter(Boolean), {
-      opacity: 0,
-      scale: 0.8,
-      duration: 0.3,
-      stagger: 0.05,
-      ease: "power2.inOut"
-    });
   }, []);
 
   const animateSearchClose = useCallback(() => {
     if (!searchRef.current) return;
     
-    const tl = gsap.timeline();
-    
-    tl.to(searchRef.current, {
+    gsap.to(searchRef.current, {
       y: -20,
       opacity: 0,
-      duration: 0.4,
-      ease: "power3.in"
-    })
-    .then(() => {
-      // Show other elements
-      gsap.to(logoRef.current, {
-        opacity: 1,
-        scale: 1,
-        duration: 0.5,
-        ease: "power3.out"
-      });
-      
-      gsap.to(navItemsRef.current.filter(Boolean), {
-        opacity: 1,
-        x: 0,
-        duration: 0.5,
-        stagger: 0.05,
-        ease: "power3.out"
-      });
-      
-      gsap.to(actionButtonsRef.current.filter(Boolean), {
-        opacity: 1,
-        scale: 1,
-        duration: 0.5,
-        stagger: 0.05,
-        ease: "elastic.out(1, 0.5)"
-      });
+      scale: 0.95,
+      duration: 0.3,
+      ease: "power2.in",
+      onComplete: () => {
+        gsap.to(headerRef.current, {
+          backgroundColor: 'rgba(15, 23, 42, 0.8)',
+          duration: 0.3
+        });
+      }
     });
   }, []);
 
@@ -429,7 +511,7 @@ export default function Header() {
         setSearchResults([]);
         setShowSearchResults(false);
         setIsSearching(false);
-      }, 400);
+      }, 300);
     }
   }, [isSearchOpen, animateSearchClose]);
 
@@ -437,158 +519,53 @@ export default function Header() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        if (isSearchOpen) {
-          closeSearch();
-        }
+        closeSearch();
       }
-
-      const targets = [
-        { ref: userDropdownRef, condition: isUserDropdownOpen },
-        { ref: mobileMenuRef, condition: isMenuOpen }
-      ];
-
-      targets.forEach(({ ref, condition }) => {
-        if (ref.current && !ref.current.contains(event.target as Node) && condition) {
-          if (ref === userDropdownRef) {
-            setIsUserDropdownOpen(false);
-          } else if (ref === mobileMenuRef) {
-            closeAllMenus();
-          }
-        }
-      });
+      
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node) && isUserDropdownOpen) {
+        setIsUserDropdownOpen(false);
+      }
+      
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node) && isMenuOpen) {
+        setIsMenuOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isSearchOpen, isUserDropdownOpen, isMenuOpen, closeSearch]);
 
-  // Close dropdown when route changes
-  useEffect(() => {
-    closeAllMenus();
-  }, [pathname]);
-
-  // Memoized values
-  const filteredNavigation = useMemo(() => 
-    NAVIGATION_ITEMS.filter(item => 
-      isMenuOpen || pathname !== item.href
-    ), [isMenuOpen, pathname]
-  );
-
   // User data helpers
   const getUserInitials = useCallback(() => 
-    user ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase() : 'U'
+    user ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase() : 'GU'
   , [user]);
 
   const getUserFullName = useCallback(() => 
-    user ? `${user.firstName} ${user.lastName}` : 'Account'
+    user ? `${user.firstName} ${user.lastName}` : 'Guest'
   , [user]);
 
   const getUserProfileImage = useCallback(() => 
     user ? user.avatar || user.profileImage || null : null
   , [user]);
 
-  const hasProfileImage = useCallback(() => 
-    getUserProfileImage() !== null
-  , [getUserProfileImage]);
-
   // Core functions
   const closeAllMenus = useCallback(() => {
-    if (isMenuOpen) {
-      gsap.to(mobileMenuContainerRef.current, {
-        y: -50,
-        opacity: 0,
-        duration: 0.4,
-        ease: "power3.in",
-        onComplete: () => {
-          setIsMenuOpen(false);
-        }
-      });
-    }
-    
-    if (isUserDropdownOpen) {
-      const dropdownMenu = userDropdownRef.current?.querySelector('.user-dropdown-menu');
-      if (dropdownMenu) {
-        gsap.to(dropdownMenu, {
-          scale: 0.9,
-          opacity: 0,
-          duration: 0.3,
-          ease: "power2.in",
-          onComplete: () => {
-            setIsUserDropdownOpen(false);
-          }
-        });
-      } else {
-        setIsUserDropdownOpen(false);
-      }
-    }
-    
-    if (isSearchOpen) {
-      closeSearch();
-    }
-  }, [isMenuOpen, isUserDropdownOpen, isSearchOpen, closeSearch]);
+    setIsMenuOpen(false);
+    setIsUserDropdownOpen(false);
+    closeSearch();
+  }, [closeSearch]);
 
   const toggleMenu = useCallback(() => {
-    if (isMenuOpen) {
-      closeAllMenus();
-    } else {
-      closeSearch();
-      setIsUserDropdownOpen(false);
-      
-      setIsMenuOpen(true);
-      setTimeout(() => {
-        if (mobileMenuContainerRef.current) {
-          gsap.fromTo(mobileMenuContainerRef.current,
-            { y: -50, opacity: 0 },
-            {
-              y: 0,
-              opacity: 1,
-              duration: 0.6,
-              ease: "power3.out"
-            }
-          );
-          
-          // Animate mobile menu items
-          gsap.fromTo(mobileMenuContainerRef.current.querySelectorAll('.mobile-menu-item'),
-            { x: -30, opacity: 0 },
-            {
-              x: 0,
-              opacity: 1,
-              duration: 0.5,
-              stagger: 0.08,
-              ease: "power3.out",
-              delay: 0.2
-            }
-          );
-        }
-      }, 10);
-    }
-  }, [isMenuOpen, closeSearch, closeAllMenus]);
+    setIsMenuOpen(prev => !prev);
+    setIsUserDropdownOpen(false);
+    closeSearch();
+  }, [closeSearch]);
 
   const toggleUserDropdown = useCallback(() => {
-    if (isUserDropdownOpen) {
-      closeAllMenus();
-    } else {
-      closeSearch();
-      setIsMenuOpen(false);
-      
-      setIsUserDropdownOpen(true);
-      setTimeout(() => {
-        const dropdown = userDropdownRef.current?.querySelector('.user-dropdown-menu');
-        if (dropdown) {
-          gsap.fromTo(dropdown,
-            { scale: 0.9, opacity: 0, y: -10 },
-            {
-              scale: 1,
-              opacity: 1,
-              y: 0,
-              duration: 0.4,
-              ease: "power3.out"
-            }
-          );
-        }
-      }, 10);
-    }
-  }, [isUserDropdownOpen, closeSearch]);
+    setIsUserDropdownOpen(prev => !prev);
+    setIsMenuOpen(false);
+    closeSearch();
+  }, [closeSearch]);
 
   const toggleSearch = useCallback(() => {
     if (isSearchOpen) {
@@ -601,750 +578,432 @@ export default function Header() {
         searchInputRef.current?.focus();
       }, 10);
     }
-  }, [isSearchOpen, closeAllMenus, closeSearch, animateSearchOpen]);
+  }, [isSearchOpen, closeAllMenus, animateSearchOpen, closeSearch]);
 
-  const handleAccountClick = useCallback(() => {
-    if (user) {
-      toggleUserDropdown();
-    } else {
-      router.push('/auth/login');
-      closeAllMenus();
-    }
-  }, [user, toggleUserDropdown, router, closeAllMenus]);
-
-  const handleLogout = useCallback(async () => {
-    try {
-      logout();
-      setIsUserDropdownOpen(false);
-      closeAllMenus();
-      
-      // Animate logout
-      gsap.to(headerRef.current, {
-        opacity: 0.8,
-        duration: 0.3,
-        yoyo: true,
-        repeat: 1,
-        onComplete: () => {
-          router.push('/');
-        }
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  }, [router, closeAllMenus, logout]);
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode(prev => !prev);
+    document.documentElement.classList.toggle('dark');
+  }, []);
 
   const handleNavigation = useCallback((href: string) => {
-    // Animate navigation
-    gsap.to(headerRef.current, {
-      y: -5,
-      duration: 0.2,
-      yoyo: true,
-      repeat: 1,
-      onComplete: () => {
-        closeAllMenus();
-        setTimeout(() => router.push(href), 50);
-      }
+    // Ripple effect
+    const ripple = document.createElement('div');
+    ripple.className = 'absolute w-2 h-2 bg-white/30 rounded-full pointer-events-none';
+    ripple.style.left = `${window.innerWidth / 2}px`;
+    ripple.style.top = `${window.innerHeight / 2}px`;
+    document.body.appendChild(ripple);
+    
+    gsap.to(ripple, {
+      scale: 100,
+      opacity: 0,
+      duration: 0.6,
+      ease: "power4.out",
+      onComplete: () => ripple.remove()
     });
+    
+    closeAllMenus();
+    setTimeout(() => router.push(href), 400);
   }, [router, closeAllMenus]);
 
-  const handleMobileButton = useCallback((action: () => void) => {
-    closeAllMenus();
-    setTimeout(action, 50);
-  }, [closeAllMenus]);
-
-  // Enhanced hover animations for desktop nav items
-  const handleNavHoverEnter = useCallback((index: number) => {
-    const navItem = navItemsRef.current[index];
-    if (navItem) {
-      gsap.to(navItem, {
-        scale: 1.05,
-        y: -2,
-        duration: 0.3,
-        ease: "power2.out"
-      });
-    }
-  }, []);
-
-  const handleNavHoverLeave = useCallback((index: number) => {
-    const navItem = navItemsRef.current[index];
-    if (navItem) {
-      gsap.to(navItem, {
-        scale: 1,
-        y: 0,
-        duration: 0.3,
-        ease: "power2.out"
-      });
-    }
-  }, []);
-
-  // Enhanced hover animations for action buttons
-  const handleButtonHoverEnter = useCallback((index: number) => {
-    const button = actionButtonsRef.current[index];
-    if (button) {
-      gsap.to(button, {
-        scale: 1.1,
-        rotation: 5,
-        duration: 0.3,
-        ease: "elastic.out(1, 0.5)"
-      });
-    }
-  }, []);
-
-  const handleButtonHoverLeave = useCallback((index: number) => {
-    const button = actionButtonsRef.current[index];
-    if (button) {
-      gsap.to(button, {
-        scale: 1,
-        rotation: 0,
-        duration: 0.3,
-        ease: "power2.out"
-      });
-    }
-  }, []);
-
-  // JSX Components as variables for better organization
-  const HeaderSkeleton = () => (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-2xl">
-      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 bg-gray-300/50 rounded-2xl animate-pulse" />
-            <div className="flex flex-col">
-              <div className="h-8 w-32 bg-gray-300/20 rounded animate-pulse" />
-              <div className="h-4 w-24 bg-gray-300/20 rounded animate-pulse mt-1" />
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-10 h-10 bg-gray-300/20 rounded-full animate-pulse" />
-            <div className="w-10 h-10 bg-gray-300/20 rounded-full animate-pulse" />
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-
-  const AnimatedBackground = () => (
-    <div className="fixed inset-0 pointer-events-none z-30">
-      <div 
-        className="absolute inset-0 opacity-30 transition-all duration-1000"
-        style={{
-          background: `
-            radial-gradient(800px at ${mousePosition.x}px ${mousePosition.y}px, 
-              rgba(120, 119, 198, 0.15), transparent 70%),
-            radial-gradient(600px at ${mousePosition.x * 0.7}px ${mousePosition.y * 0.7}px, 
-              rgba(255, 119, 198, 0.10), transparent 50%),
-            radial-gradient(400px at ${mousePosition.x * 1.3}px ${mousePosition.y * 1.3}px, 
-              rgba(119, 198, 255, 0.05), transparent 40%)
-          `,
-        }}
-      />
-    </div>
-  );
-
-  const Logo = () => (
+  // Memoized modern components with PROPER SIZING
+  const Logo = memo(() => (
     <Link 
       ref={logoRef}
       href="/" 
-      className={`flex items-center space-x-4 group relative transition-all duration-500 ${
-        isSearchOpen ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'
+      className={`flex items-center space-x-4 group relative ${
+        isSearchOpen ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
       }`}
       onClick={(e) => {
-        closeAllMenus();
-        gsap.to(e.currentTarget, {
-          scale: 0.95,
-          duration: 0.2,
-          yoyo: true,
-          repeat: 1
-        });
+        e.preventDefault();
+        handleNavigation('/');
       }}
-      onMouseEnter={() => {
-        setActiveHover('logo');
-        gsap.to(logoRef.current, {
-          scale: 1.05,
-          rotation: 2,
-          duration: 0.4,
-          ease: "elastic.out(1, 0.5)"
-        });
-      }}
-      onMouseLeave={() => {
-        setActiveHover(null);
-        gsap.to(logoRef.current, {
-          scale: 1,
-          rotation: 0,
-          duration: 0.4,
-          ease: "power2.out"
-        });
-      }}
+      aria-label="RS-LEGACY"
     >
+      {/* Modern logo mark - LARGER */}
       <div className="relative">
-        <div className="absolute -inset-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-3xl blur-2xl opacity-20 group-hover:opacity-40 transition-all duration-1000 group-hover:scale-110" />
-        <div className="absolute -inset-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-2xl blur-xl opacity-10 group-hover:opacity-30 transition-all duration-700 group-hover:scale-105" />
-        
-        <div className="relative w-14 h-14 bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/30 group-hover:shadow-purple-500/50 transition-all duration-500 group-hover:scale-105 group-hover:rotate-3 transform-gpu border border-white/10">
-          <Crown className="w-7 h-7 text-white transform group-hover:scale-110 transition-transform duration-300" />
-          
-          <div className="absolute -top-1 -right-1">
-            <Sparkles className="w-3 h-3 text-yellow-400 animate-spin" style={{ animationDuration: '2s' }} />
-          </div>
-          <div className="absolute -bottom-1 -left-1">
-            <Sparkles className="w-2 h-2 text-cyan-400 animate-pulse" style={{ animationDuration: '1.5s' }} />
-          </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-xl blur-xl opacity-50 group-hover:opacity-70 transition-opacity duration-500" />
+        <div className="relative w-14 h-14 bg-gradient-to-br from-slate-900 via-blue-900 to-cyan-900 rounded-xl flex items-center justify-center border-2 border-slate-700/50 group-hover:border-blue-500/50 transition-all duration-500">
+          <Crown className="w-7 h-7 text-blue-400 group-hover:scale-110 transition-transform duration-300" />
+          {/* Animated accent */}
+          <div className="absolute -inset-2 rounded-xl border-2 border-blue-500/20 group-hover:border-blue-400/40 transition-all duration-500" />
         </div>
       </div>
       
+      {/* Modern logo text - LARGER */}
       <div className="flex flex-col">
-        <span className="text-3xl font-black bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent tracking-tighter group-hover:scale-105 transition-transform duration-300 relative">
+        <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient">
           RS-LEGACY
-          <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-600 to-cyan-600 group-hover:w-full transition-all duration-500" />
         </span>
-        <div className="flex items-center space-x-2 mt-1">
-          <div className="w-1.5 h-1.5 bg-gradient-to-r from-green-400 to-cyan-400 rounded-full animate-pulse" />
-          <span className="text-xs font-semibold text-gray-300 dark:text-gray-400 tracking-widest uppercase">
-            Timeless Elegance
-          </span>
-        </div>
+        <span className="text-sm text-slate-400 font-medium tracking-wider">
+          {SITE_METADATA.tagline}
+        </span>
       </div>
     </Link>
-  );
+  ));
 
-  const DigitalClock = () => (
-    <div ref={clockRef} className="hidden md:flex items-center justify-center">
-      <div 
-        className="relative group cursor-pointer"
-        onMouseEnter={() => {
-          setIsClockHovered(true);
-          gsap.to(clockRef.current, {
-            scale: 1.05,
-            duration: 0.3,
-            ease: "power2.out"
-          });
-        }}
-        onMouseLeave={() => {
-          setIsClockHovered(false);
-          gsap.to(clockRef.current, {
-            scale: 1,
-            duration: 0.3,
-            ease: "power2.out"
-          });
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl blur-lg transform scale-110 transition-all duration-500 group-hover:scale-125 group-hover:opacity-40" />
-        
-        <div className="relative bg-black/20 dark:bg-white/5 backdrop-blur-3xl rounded-2xl px-6 py-3 border border-white/10 dark:border-gray-700/10 shadow-2xl transition-all duration-500 group-hover:scale-105 group-hover:border-purple-500/30">
-          <div className="flex items-center space-x-3">
-            <div className="relative">
-              <Clock className="w-4 h-4 text-purple-400 transform group-hover:scale-110 transition-transform duration-300" />
-              <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            </div>
-            <div className="flex flex-col items-start">
-              <span className="font-mono text-lg font-bold text-white dark:text-white tracking-wider">
-                {currentTime}
-              </span>
-              <span className={`text-xs text-gray-300 dark:text-gray-400 transition-all duration-500 ${
-                isClockHovered ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-1'
-              }`}>
-                {currentDate}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  Logo.displayName = 'Logo';
 
-  const NavigationLink = useCallback(({ item, isMobile = false, index = 0 }: { item: typeof NAVIGATION_ITEMS[0], isMobile?: boolean, index?: number }) => {
+  const NavigationLink = memo(({ 
+    item, 
+    isMobile = false, 
+    index = 0 
+  }: { 
+    item: typeof NAVIGATION_ITEMS[0], 
+    isMobile?: boolean, 
+    index?: number 
+  }) => {
     const Icon = item.icon;
     const isActive = pathname === item.href;
+    const [isHovered, setIsHovered] = useState(false);
 
     if (isMobile) {
       return (
-        <button
-          onClick={() => handleNavigation(item.href)}
-          className={`w-full flex items-center space-x-4 py-4 px-6 font-semibold rounded-2xl transition-all duration-500 border border-white/10 dark:border-gray-700/10 group backdrop-blur-xl mobile-menu-item ${
+        <Link
+          href={item.href}
+          onClick={(e) => {
+            e.preventDefault();
+            handleNavigation(item.href);
+          }}
+          className={`group relative w-full flex items-center space-x-4 p-4 rounded-xl transition-all duration-300 ${
             isActive
-              ? 'text-white bg-gradient-to-r from-purple-500/30 to-blue-500/30'
-              : 'text-gray-300 dark:text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-purple-500/20 hover:to-blue-500/20'
+              ? 'bg-slate-800/50 text-white'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/30'
           }`}
         >
-          <Icon className={`w-5 h-5 transition-transform duration-300 group-hover:scale-110 ${
-            isActive ? 'text-white' : 'text-purple-400'
-          }`} />
-          <div className="flex flex-col items-start">
-            <span className="text-base">{item.name}</span>
-            <span className="text-xs text-gray-400 dark:text-gray-400 group-hover:text-white/80">
-              {item.description}
-            </span>
+          <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${item.color} transition-transform duration-300 group-hover:scale-110`}>
+            <Icon className="w-6 h-6 text-white" />
           </div>
-          {isActive && (
-            <div className="ml-auto">
-              <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-            </div>
-          )}
-        </button>
+          <div className="flex flex-col">
+            <span className="text-lg font-semibold">{item.name}</span>
+            <span className="text-sm text-slate-400">{item.description}</span>
+          </div>
+        </Link>
       );
     }
 
     return (
       <Link
-        // ref={el => navItemsRef.current[index] = el}
+        ref={el => { 
+          if (el) {
+            navItemsRef.current[index] = el;
+            magneticRefs.current[index] = el;
+          }
+        }}
         href={item.href}
-        className={`relative px-6 py-4 font-semibold transition-all duration-700 group ${
-          isActive 
-            ? 'text-white' 
-            : 'text-gray-300 dark:text-gray-300 hover:text-white'
-        }`}
-        onMouseEnter={() => {
-          setActiveHover(item.name);
-          handleNavHoverEnter(index);
-        }}
-        onMouseLeave={() => {
-          setActiveHover(null);
-          handleNavHoverLeave(index);
-        }}
+        className="relative px-5 py-3 group"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         onClick={(e) => {
-          closeAllMenus();
-          gsap.to(e.currentTarget, {
-            scale: 0.95,
-            duration: 0.2,
-            yoyo: true,
-            repeat: 1
-          });
+          e.preventDefault();
+          handleNavigation(item.href);
         }}
       >
-        <div className={`absolute inset-0 rounded-2xl transition-all duration-700 backdrop-blur-lg ${
-          isActive 
-            ? 'bg-gradient-to-r from-purple-500/30 to-blue-500/30' 
-            : activeHover === item.name 
-            ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20' 
-            : 'bg-gradient-to-r from-purple-500/0 to-blue-500/0 group-hover:from-purple-500/15 group-hover:to-blue-500/15'
+        <span className={`relative z-10 text-base font-semibold transition-colors duration-300 ${
+          isActive ? 'text-white' : 'text-slate-300 group-hover:text-white'
+        }`}>
+          {item.name}
+        </span>
+        
+        {/* Modern hover effect */}
+        <div className={`absolute inset-0 rounded-xl transition-all duration-500 ${
+          isHovered ? 'bg-slate-800/30 backdrop-blur-sm' : ''
         }`} />
         
-        <div className={`absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-700 ${
-          isActive || activeHover === item.name ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'
-        }`} style={{ 
-          mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-          maskComposite: 'exclude',
-          padding: '1.5px',
-        }} />
+        {/* Animated underline - THICKER */}
+        <div className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 h-1 rounded-full transition-all duration-500 ${
+          isActive || isHovered 
+            ? `w-full ${item.color}`
+            : 'w-0 bg-transparent'
+        }`} />
         
-        <div className="relative z-10 flex items-center space-x-3">
-          <Icon className={`w-4 h-4 transition-all duration-700 ${
-            isActive || activeHover === item.name
-              ? 'text-white scale-110' 
-              : 'text-gray-400 group-hover:text-purple-300'
-          }`} />
-          <div className="flex flex-col">
-            <span className="tracking-wide text-sm">{item.name}</span>
-            <span className={`text-xs text-gray-400 dark:text-gray-400 transition-all duration-500 ${
-              activeHover === item.name ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-1'
-            }`}>
-              {item.description}
-            </span>
-          </div>
+        {/* Floating icon on hover - LARGER */}
+        <div className={`absolute -top-10 left-1/2 transform -translate-x-1/2 w-10 h-10 rounded-xl ${item.color} flex items-center justify-center transition-all duration-500 ${
+          isHovered 
+            ? 'opacity-100 translate-y-0 scale-100' 
+            : 'opacity-0 translate-y-2 scale-90'
+        }`}>
+          <Icon className="w-5 h-5 text-white" />
         </div>
-        
-        {isActive && (
-          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full" />
-        )}
-        
-        {!isActive && (
-          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full group-hover:w-12 transition-all duration-700" />
-        )}
       </Link>
     );
-  }, [pathname, activeHover, closeAllMenus, handleNavigation, handleNavHoverEnter, handleNavHoverLeave]);
+  });
 
-  const UserAvatar = useCallback(({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
+  NavigationLink.displayName = 'NavigationLink';
+
+  const UserAvatar = memo(({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) => {
     const sizeClasses = {
-      sm: 'w-8 h-8 text-sm',
-      md: 'w-12 h-12 text-lg',
-      lg: 'w-14 h-14 text-xl'
+      sm: 'w-10 h-10 text-sm',
+      md: 'w-12 h-12 text-base',
+      lg: 'w-16 h-16 text-lg'
     };
 
-    if (hasProfileImage()) {
-      return (
-        <img
-          src={getUserProfileImage()!}
-          alt={`${getUserFullName()}'s profile`}
-          className={`${sizeClasses[size]} rounded-full object-cover border-2 border-purple-500/30 group-hover:border-purple-500/60 transition-all duration-300`}
-        />
-      );
-    }
+    const profileImage = getUserProfileImage();
 
-    return (
-      <div className={`${sizeClasses[size]} bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold transform group-hover:scale-110 transition-transform duration-500`}>
+    return profileImage ? (
+      <img
+        src={profileImage}
+        alt={getUserFullName()}
+        className={`${sizeClasses[size]} rounded-full object-cover border-2 border-slate-700`}
+      />
+    ) : (
+      <div 
+        className={`${sizeClasses[size]} bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center text-white font-bold`}
+      >
         {getUserInitials()}
       </div>
     );
-  }, [hasProfileImage, getUserProfileImage, getUserFullName, getUserInitials]);
+  });
 
-  const SearchInterface = () => (
-    <div ref={searchRef} className="absolute top-0 left-0 right-0 h-20 flex items-center justify-center px-4 sm:px-6 lg:px-8 z-60 bg-black/30 dark:bg-gray-900/30 backdrop-blur-3xl">
-      <form onSubmit={handleSearchSubmit} className="w-full max-w-4xl relative">
-        <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-purple-500/40 to-blue-500/40 rounded-3xl blur-2xl transform scale-105 animate-pulse" />
-          
-          <input
-            ref={searchInputRef}
-            id="search-input"
-            type="text"
-            placeholder="✨ Search products... (Try 'T-Shirt', 'Jacket', 'Sneakers')"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="relative w-full px-8 py-5 pl-14 pr-14 rounded-3xl border-0 bg-black/40 dark:bg-gray-900/40 backdrop-blur-3xl shadow-2xl text-lg text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/40 transition-all duration-500 font-light"
-            autoFocus
-          />
-          
-          <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-purple-400 w-5 h-5" />
-          
-          {isSearching && (
-            <div className="absolute right-12 top-1/2 transform -translate-y-1/2">
-              <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
-            </div>
-          )}
-          
-          <button
-            type="button"
-            onClick={closeSearch}
-            className="absolute right-6 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-all duration-300 p-1 rounded-full hover:bg-white/10"
+  UserAvatar.displayName = 'UserAvatar';
+
+  const SearchInterface = memo(() => (
+    <div 
+      ref={searchRef} 
+      className="absolute top-0 left-0 right-0 z-50"
+    >
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
+        <div className="h-20 flex items-center"> {/* Matches navbar height */}
+          <form 
+            onSubmit={handleSearchSubmit} 
+            className="w-full relative"
           >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Enhanced Search Results Dropdown */}
-        {showSearchResults && searchQuery.trim() && (
-          <div ref={searchContainerRef} className="absolute top-full left-0 right-0 mt-4 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/10 py-4 z-70 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-black/30 to-gray-900/30" />
-            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
-            
-            <div className="relative z-10 max-h-96 overflow-y-auto">
-              {searchResults.length > 0 ? (
-                <>
-                  <div className="px-6 py-3 border-b border-white/10">
-                    <p className="text-sm font-semibold text-gray-300">
-                      Found {searchResults.length} product{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
-                    </p>
-                  </div>
-                  
-                  {searchResults.map((product) => (
-                    <button
-                      key={product.id}
-                      data-product-id={product.id}
-                      onClick={() => handleProductClick(product.id)}
-                      className="w-full flex items-center space-x-4 px-6 py-4 text-left hover:bg-purple-500/10 transition-all duration-300 group border-b border-white/5 last:border-b-0 search-result-item"
-                      onMouseEnter={(e) => {
-                        gsap.to(e.currentTarget, {
-                          x: 5,
-                          duration: 0.3,
-                          ease: "power2.out"
-                        });
-                      }}
-                      onMouseLeave={(e) => {
-                        gsap.to(e.currentTarget, {
-                          x: 0,
-                          duration: 0.3,
-                          ease: "power2.out"
-                        });
-                      }}
-                    >
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="w-16 h-16 rounded-xl object-cover border border-white/10 group-hover:scale-105 transition-transform duration-300"
-                      />
-                      
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-white truncate group-hover:text-purple-300 transition-colors duration-300">
-                          {product.name}
-                        </p>
-                        <div className="flex items-center space-x-3 mt-2">
-                          <span className="text-lg font-bold text-purple-300">
-                            ${product.price}
-                          </span>
-                          {product.originalPrice && (
-                            <span className="text-sm text-gray-400 line-through">
-                              ${product.originalPrice}
-                            </span>
-                          )}
-                          <span className="text-xs px-2 py-1 bg-white/10 text-gray-300 rounded-full capitalize">
-                            {product.category}
-                          </span>
-                          {!product.inStock && (
-                            <span className="text-xs text-red-400 font-semibold">
-                              Out of Stock
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-1 mt-1">
-                          <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                          <span className="text-xs text-gray-400">
-                            {product.rating}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <ChevronDown className="w-4 h-4 text-gray-400 transform -rotate-90 group-hover:scale-110 transition-transform duration-300" />
-                    </button>
-                  ))}
-                  
-                  <div className="px-6 py-4 border-t border-white/10 bg-gradient-to-r from-purple-500/10 to-blue-500/10">
-                    <button
-                      type="submit"
-                      className="w-full flex items-center justify-center space-x-2 py-3 px-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-2xl font-semibold hover:from-purple-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                    >
-                      <Search className="w-4 h-4" />
-                      <span>View First Product</span>
-                    </button>
-                    <p className="text-xs text-center text-gray-400 mt-2">
-                      Or click any product above to view details
-                    </p>
-                  </div>
-                </>
-              ) : !isSearching ? (
-                <div className="px-6 py-8 text-center">
-                  <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-300 font-semibold mb-2">
-                    No products found
-                  </p>
-                  <p className="text-sm text-gray-400 mb-4">
-                    We couldn't find any products matching "{searchQuery}"
-                  </p>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center space-x-2 py-3 px-6 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-2xl font-semibold hover:from-purple-600 hover:to-blue-600 transition-all duration-300 transform hover:scale-105 shadow-lg"
-                  >
-                    <span>Browse All Products</span>
-                  </button>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-400/10 rounded-xl blur-xl" />
+              
+              <input
+                ref={searchInputRef}
+                type="search"
+                placeholder="Search products, brands, collections..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+                className="relative w-full px-6 py-4 pl-14 pr-14 rounded-2xl border-2 border-slate-700/50 bg-slate-900/80 backdrop-blur-xl text-white placeholder-slate-400 focus:outline-none focus:ring-3 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all duration-300 text-base" // Larger text and padding
+                autoFocus
+              />
+              
+              <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" /> {/* Larger icon */}
+              
+              {isSearching && (
+                <div className="absolute right-14 top-1/2 transform -translate-y-1/2">
+                  <div className="w-5 h-5 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" /> {/* Larger spinner */}
                 </div>
-              ) : null}
+              )}
+              
+              <button
+                type="button"
+                onClick={closeSearch}
+                className="absolute right-6 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition-colors duration-200"
+              >
+                <X className="w-5 h-5" /> {/* Larger icon */}
+              </button>
             </div>
-          </div>
-        )}
-      </form>
+          </form>
+        </div>
+      </div>
     </div>
-  );
+  ));
 
-  // Simple loading state for initial render
+  SearchInterface.displayName = 'SearchInterface';
+
+  const ScrollProgress = memo(() => (
+    <div ref={scrollProgressRef} className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-400" /> // Thicker progress bar
+  ));
+
+  ScrollProgress.displayName = 'ScrollProgress';
+
+  // Loading state
   if (!isClient) {
     return <HeaderSkeleton />;
   }
 
   return (
     <>
-      {isClient && <AnimatedBackground />}
-
-      {/* FULLY TRANSPARENT HEADER */}
-      <header 
-        ref={headerRef}
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-1000 ${
-          scrolled 
-            ? 'bg-black/20 dark:bg-gray-900/20 backdrop-blur-3xl shadow-2xl shadow-purple-500/5' 
-            : 'bg-transparent backdrop-blur-2xl'
-        }`}
-      >
-        
-        {/* Elegant Top Border with Gradient Flow */}
-        <div ref={gradientBorderRef} className="h-0.5 bg-gradient-to-r from-purple-500 via-blue-500 to-cyan-500 relative overflow-hidden opacity-80">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
-        </div>
-        
-        {/* Enhanced Floating Particles */}
-        {isClient && (
-          <div ref={particlesRef} className="absolute inset-0 overflow-hidden pointer-events-none">
-            {[...Array(12)].map((_, i) => (
+      {/* Modern cursor - LARGER */}
+      {isClient && (
+        <>
+          <div 
+            ref={cursorRef}
+            className="fixed w-12 h-12 pointer-events-none z-[9999] mix-blend-difference"
+            style={{
+              background: 'radial-gradient(circle, rgba(59, 130, 246, 0.4) 0%, transparent 70%)',
+              filter: 'blur(1px)'
+            }}
+          />
+          <div 
+            ref={floatingElementsRef}
+            className="fixed inset-0 pointer-events-none z-30"
+          >
+            {[...Array(5)].map((_, i) => (
               <div
                 key={i}
-                className="absolute w-1 h-1 bg-gradient-to-r from-purple-400/30 to-blue-400/30 rounded-full opacity-20 animate-float"
+                className="absolute rounded-full"
                 style={{
                   left: `${Math.random() * 100}%`,
                   top: `${Math.random() * 100}%`,
-                  animationDelay: `${i * 0.3}s`,
-                  animationDuration: `${4 + Math.random() * 3}s`,
+                  width: `${Math.random() * 100 + 50}px`,
+                  height: `${Math.random() * 100 + 50}px`,
+                  background: `radial-gradient(circle at ${Math.random() * 100}% ${Math.random() * 100}%, rgba(59, 130, 246, 0.03), transparent 70%)`,
+                  opacity: 0.3
                 }}
               />
             ))}
           </div>
-        )}
+        </>
+      )}
 
-        <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="flex justify-between items-center h-20">
-            
+      {/* Modern Glass Effect Layer */}
+      <div 
+        ref={glassEffectRef}
+        className="fixed inset-0 bg-gradient-to-b from-blue-900/5 via-transparent to-cyan-900/5 pointer-events-none z-40"
+      />
+
+      {/* MAIN HEADER - PROPER HEIGHT */}
+      <header 
+        ref={headerRef}
+        className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/50 transition-all duration-500 h-20" // Fixed proper height
+        style={{
+          '--scroll-progress': scrollProgress
+        } as React.CSSProperties}
+      >
+        {/* Scroll Progress Indicator */}
+        <ScrollProgress />
+
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 relative h-full"> {/* Added h-full */}
+          <div className="flex justify-between items-center h-full"> {/* Changed to h-full */}
+            {/* Logo */}
             <Logo />
 
-            {currentTime && !isSearchOpen && <DigitalClock />}
-
-            {/* Enhanced Desktop Navigation - Hide when search is open */}
+            {/* Desktop Navigation */}
             {!isSearchOpen && (
-              <nav className="hidden xl:flex items-center space-x-2 relative">
-                {filteredNavigation.map((item, index) => (
+              <nav className="hidden lg:flex items-center space-x-2"> {/* Increased spacing */}
+                {NAVIGATION_ITEMS.map((item, index) => (
                   <NavigationLink key={item.name} item={item} index={index} />
                 ))}
               </nav>
             )}
 
-            {/* Enhanced Action Buttons */}
-            <div className="hidden md:flex items-center space-x-2">
-              {/* Search Button */}
-              <button 
-                // ref={el => actionButtonsRef.current[0] = el}
-                onClick={toggleSearch}
-                onMouseEnter={() => handleButtonHoverEnter(0)}
-                onMouseLeave={() => handleButtonHoverLeave(0)}
-                className={`relative p-3 transition-all duration-500 group ${
-                  isSearchOpen 
-                    ? 'text-purple-300 scale-110' 
-                    : 'text-gray-300 hover:text-purple-300'
-                }`}
+            {/* Modern Action Buttons - LARGER */}
+            <div className={`flex items-center space-x-3 transition-all duration-300 ${
+              isSearchOpen ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+            }`}>
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleDarkMode}
+                className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300"
+                aria-label="Toggle theme"
               >
-                <div className={`absolute inset-0 rounded-2xl transition-all duration-500 backdrop-blur-lg ${
-                  isSearchOpen
-                    ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20' 
-                    : 'bg-gradient-to-r from-purple-500/0 to-blue-500/0 group-hover:from-purple-500/10 group-hover:to-blue-500/10'
-                }`} />
-                <Search className={`w-5 h-5 relative z-10 transition-transform duration-500 ${
-                  isSearchOpen ? 'scale-110 rotate-90' : 'group-hover:scale-110'
-                }`} />
+                {isDarkMode ? (
+                  <Sun className="w-5 h-5" /> 
+                ) : (
+                  <Moon className="w-5 h-5" /> 
+                )}
               </button>
 
-              {/* User Account Button */}
-              <div className="relative" ref={userDropdownRef}>
-                <button 
-                  // ref={el => actionButtonsRef.current[1] = el}
-                  onClick={handleAccountClick}
-                  onMouseEnter={() => handleButtonHoverEnter(1)}
-                  onMouseLeave={() => handleButtonHoverLeave(1)}
-                  className={`relative flex items-center space-x-3 px-4 py-2 transition-all duration-500 group rounded-2xl ${
-                    isSearchOpen
-                      ? 'opacity-0 scale-95 pointer-events-none' 
-                      : 'opacity-100 scale-100 text-gray-300 hover:text-purple-300 hover:bg-gradient-to-r hover:from-purple-500/10 hover:to-blue-500/10'
-                  }`}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500 backdrop-blur-lg" />
-                  
-                  {user ? (
-                    <div className="flex items-center space-x-3 relative z-10">
-                      <div className="relative">
-                        <UserAvatar size="sm" />
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-black/30 dark:border-gray-900/30" />
-                      </div>
-                      
-                      <div className="hidden lg:flex flex-col items-start">
-                        <span className="text-sm font-semibold text-white group-hover:text-purple-300 transition-colors duration-300">
-                          {user.firstName}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          Welcome back!
-                        </span>
-                      </div>
-                      
-                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-300 ${
-                        isUserDropdownOpen ? 'rotate-180' : ''
-                      }`} />
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2 relative z-10">
-                      <User className="w-5 h-5 group-hover:scale-110 transition-transform duration-500" />
-                      <span className="hidden lg:block text-sm font-medium">Account</span>
-                    </div>
-                  )}
+              {/* Search */}
+              <button
+                onClick={toggleSearch}
+                className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300"
+                aria-label="Search"
+              >
+                <Search className="w-5 h-5" /> {/* Larger icon */}
+              </button>
+
+              {/* Notifications */}
+              {user && (
+                <button className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300 relative">
+                  <Bell className="w-5 h-5" /> {/* Larger icon */}
+                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-rose-500 rounded-full animate-pulse" /> {/* Larger dot */}
                 </button>
-                
-                {/* Enhanced User Dropdown Menu */}
+              )}
+
+              {/* Wishlist */}
+              {user && (
+                <Link
+                  href="/wishlist"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300"
+                >
+                  <Heart className="w-5 h-5" /> {/* Larger icon */}
+                </Link>
+              )}
+
+              {/* Cart */}
+              {user && (
+                <Link
+                  href="/cart"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300 relative"
+                  data-cart-button
+                >
+                  <ShoppingCart className="w-5 h-5" /> {/* Larger icon */}
+                  {state.itemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-slate-900"> {/* Larger badge */}
+                      {state.itemCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+
+              {/* User Menu */}
+              <div className="relative" ref={userDropdownRef}>
+                <button
+                  onClick={toggleUserDropdown}
+                  className="flex items-center space-x-3 p-1.5 rounded-xl hover:bg-slate-800/50 transition-all duration-300"
+                >
+                  <UserAvatar size="md" />
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${
+                    isUserDropdownOpen ? 'rotate-180' : ''
+                  }`} />
+                </button>
+
                 {isUserDropdownOpen && user && (
-                  <div className="absolute top-full right-0 mt-2 w-80 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl rounded-3xl shadow-2xl shadow-purple-500/20 border border-white/10 py-4 z-60 overflow-hidden user-dropdown-menu">
-                    <div className="absolute inset-0 bg-gradient-to-br from-black/30 to-gray-900/30" />
-                    <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-purple-500 to-blue-500" />
-                    
-                    <div className="px-6 py-4 border-b border-white/10 relative z-10">
+                  <div className="absolute right-0 mt-3 w-72 bg-slate-900/95 backdrop-blur-xl rounded-2xl border-2 border-slate-800/50 shadow-2xl shadow-black/30 py-3 z-50 overflow-hidden"> {/* Larger width */}
+                    {/* User info with gradient */}
+                    <div className="px-5 py-4 border-b border-slate-800/50 bg-gradient-to-r from-slate-900/50 to-transparent"> {/* Larger padding */}
                       <div className="flex items-center space-x-4">
-                        <div className="relative">
-                          <UserAvatar size="md" />
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-black/30 dark:border-gray-900/30" />
-                        </div>
+                        <UserAvatar size="lg" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-white truncate">
+                          <p className="text-base font-semibold text-white truncate"> {/* Larger text */}
                             {getUserFullName()}
                           </p>
-                          <p className="text-xs text-gray-400 truncate">
+                          <p className="text-sm text-slate-400 truncate"> {/* Larger text */}
                             {user.email}
                           </p>
-                          <div className="flex items-center space-x-1 mt-1">
-                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-xs text-green-400 font-medium">
-                              Online
-                            </span>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                            <span className="text-sm text-emerald-400">Online</span>
                           </div>
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="py-2 relative z-10">
-                      <button
-                        onClick={() => handleMobileButton(() => router.push('/profile'))}
-                        className="w-full flex items-center space-x-3 px-6 py-3 text-gray-300 hover:text-purple-300 transition-all duration-300 group hover:bg-purple-500/10"
-                        onMouseEnter={(e) => {
-                          gsap.to(e.currentTarget, {
-                            x: 5,
-                            duration: 0.3,
-                            ease: "power2.out"
-                          });
-                        }}
-                        onMouseLeave={(e) => {
-                          gsap.to(e.currentTarget, {
-                            x: 0,
-                            duration: 0.3,
-                            ease: "power2.out"
-                          });
-                        }}
+
+                    <div className="py-2">
+                      <Link
+                        href="/profile"
+                        className="flex items-center space-x-3 px-5 py-3 text-base text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-300 group" // Larger text and padding
+                        onClick={() => setIsUserDropdownOpen(false)}
                       >
-                        <User className="w-4 h-4 transform group-hover:scale-110 transition-transform duration-300" />
-                        <span>My Profile</span>
-                      </button>
+                        <User className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" /> {/* Larger icon */}
+                        <span>Profile</span>
+                      </Link>
+                      
+                      <Link
+                        href="/settings"
+                        className="flex items-center space-x-3 px-5 py-3 text-base text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-300 group" // Larger text and padding
+                        onClick={() => setIsUserDropdownOpen(false)}
+                      >
+                        <Settings className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" /> {/* Larger icon */}
+                        <span>Settings</span>
+                      </Link>
+                      
+                      <div className="border-t border-slate-800/50 my-2" />
                       
                       <button
-                        onClick={() => handleMobileButton(() => router.push('/settings'))}
-                        className="w-full flex items-center space-x-3 px-6 py-3 text-gray-300 hover:text-purple-300 transition-all duration-300 group hover:bg-purple-500/10"
-                        onMouseEnter={(e) => {
-                          gsap.to(e.currentTarget, {
-                            x: 5,
-                            duration: 0.3,
-                            ease: "power2.out"
-                          });
+                        onClick={() => {
+                          setIsUserDropdownOpen(false);
+                          logout();
+                          router.push('/');
                         }}
-                        onMouseLeave={(e) => {
-                          gsap.to(e.currentTarget, {
-                            x: 0,
-                            duration: 0.3,
-                            ease: "power2.out"
-                          });
-                        }}
+                        className="w-full flex items-center space-x-3 px-5 py-3 text-base text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all duration-300 group" // Larger text and padding
                       >
-                        <Settings className="w-4 h-4 transform group-hover:scale-110 transition-transform duration-300" />
-                        <span>Account Settings</span>
-                      </button>
-                      
-                      <div className="border-t border-white/10 my-2" />
-                      
-                      <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center space-x-3 px-6 py-3 text-red-400 hover:text-red-300 transition-all duration-300 group hover:bg-red-500/10"
-                        onMouseEnter={(e) => {
-                          gsap.to(e.currentTarget, {
-                            x: 5,
-                            duration: 0.3,
-                            ease: "power2.out"
-                          });
-                        }}
-                        onMouseLeave={(e) => {
-                          gsap.to(e.currentTarget, {
-                            x: 0,
-                            duration: 0.3,
-                            ease: "power2.out"
-                          });
-                        }}
-                      >
-                        <LogOut className="w-4 h-4 transform group-hover:scale-110 transition-transform duration-300" />
+                        <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" /> {/* Larger icon */}
                         <span>Sign Out</span>
                       </button>
                     </div>
@@ -1352,219 +1011,118 @@ export default function Header() {
                 )}
               </div>
 
-              {/* Enhanced Cart Button - Only show when user is logged in */}
-              {user && (
-                <Link 
-                  // ref={el => actionButtonsRef.current[2] = el}
-                  href="/cart" 
-                  className={`relative p-3 transition-all duration-500 group ${
-                    isSearchOpen
-                      ? 'opacity-0 scale-95 pointer-events-none' 
-                      : 'opacity-100 scale-100 text-gray-300 hover:text-purple-300'
-                  }`}
-                  onClick={closeAllMenus}
-                  onMouseEnter={() => handleButtonHoverEnter(2)}
-                  onMouseLeave={() => handleButtonHoverLeave(2)}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500 backdrop-blur-lg" />
-                  
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-500 opacity-0 group-hover:opacity-100 transition-all duration-500" style={{ 
-                    mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                    maskComposite: 'exclude',
-                    padding: '1.5px',
-                  }} />
-                  
-                  <ShoppingCart className="w-5 h-5 relative z-10 group-hover:scale-110 transition-transform duration-500" />
-                  
-                  {state.itemCount > 0 && (
-                    <span 
-                      ref={cartBadgeRef}
-                      className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-black rounded-full w-5 h-5 flex items-center justify-center shadow-2xl z-20"
-                    >
-                      {state.itemCount}
-                    </span>
-                  )}
-                </Link>
-              )}
+              {/* Mobile Menu Button */}
+              <button
+                onClick={toggleMenu}
+                className="lg:hidden w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300"
+                aria-label="Menu"
+              >
+                <Menu className="w-6 h-6" /> {/* Larger icon */}
+              </button>
             </div>
-
-            {/* Enhanced Mobile Menu Button */}
-            <button
-              // ref={el => actionButtonsRef.current[3] = el}
-              onClick={toggleMenu}
-              onMouseEnter={() => handleButtonHoverEnter(3)}
-              onMouseLeave={() => handleButtonHoverLeave(3)}
-              className={`md:hidden relative p-2 transition-all duration-500 group ${
-                isSearchOpen
-                  ? 'opacity-0 scale-95 pointer-events-none' 
-                  : 'opacity-100 scale-100 text-gray-300 hover:text-purple-300'
-              }`}
-              aria-label="Toggle menu"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 to-blue-500/0 rounded-2xl group-hover:from-purple-500/10 group-hover:to-blue-500/10 transition-all duration-500 backdrop-blur-lg" />
-              {isMenuOpen ? (
-                <X className="w-6 h-6 relative z-10 transform transition-all duration-500 group-hover:rotate-90 scale-110" />
-              ) : (
-                <Menu className="w-6 h-6 relative z-10 transform transition-all duration-500 group-hover:scale-110 group-hover:rotate-180" />
-              )}
-            </button>
           </div>
 
           {/* Search Interface */}
           {isSearchOpen && <SearchInterface />}
         </div>
 
-        {/* Enhanced Mobile Navigation */}
+        {/* Modern Mobile Navigation - LARGER */}
         {isMenuOpen && (
           <>
             <div 
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm lg:hidden"
               onClick={closeAllMenus}
+              aria-hidden="true"
             />
             
             <div 
               ref={mobileMenuRef}
-              className="md:hidden absolute top-full left-0 right-0 bg-black/50 dark:bg-gray-900/50 backdrop-blur-3xl border-t border-white/10 shadow-2xl z-50 overflow-y-auto max-h-[80vh]"
+              className="lg:hidden fixed inset-y-0 right-0 w-96 bg-slate-900/95 backdrop-blur-xl border-l-2 border-slate-800/50 shadow-2xl z-50" // Wider mobile menu
             >
-              <div ref={mobileMenuContainerRef} className="py-8 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-blue-500/5 to-cyan-500/5" />
-                
-                <div className="absolute top-4 right-4">
-                  <Sparkles className="w-6 h-6 text-purple-400/70 animate-spin" style={{ animationDuration: '3s' }} />
-                </div>
-                <div className="absolute bottom-4 left-4">
-                  <Sparkles className="w-4 h-4 text-cyan-400/70 animate-pulse" style={{ animationDuration: '2s' }} />
-                </div>
-
-                {/* Enhanced Mobile Digital Clock */}
-                {currentTime && (
-                  <div className="px-6 mb-6 relative">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl blur-lg transform scale-105" />
-                      <div className="relative bg-black/30 dark:bg-white/5 backdrop-blur-3xl rounded-2xl px-6 py-4 border border-white/10 shadow-2xl">
-                        <div className="flex items-center justify-center space-x-3">
-                          <Clock className="w-4 h-4 text-purple-400" />
-                          <div className="flex flex-col items-center">
-                            <span className="font-mono text-lg font-bold text-white tracking-wider">
-                              {currentTime}
-                            </span>
-                            <span className="text-xs text-gray-400 mt-1">
-                              {currentDate}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* User Info in Mobile Menu */}
-                {user && (
-                  <div className="px-6 py-4 border-b border-white/10 mb-4 relative z-10 mobile-menu-item">
+              <div className="h-full flex flex-col">
+                {/* Mobile header */}
+                <div className="p-8 border-b border-slate-800/50"> {/* Larger padding */}
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className="relative">
-                        <UserAvatar size="lg" />
-                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-black/30 dark:border-gray-900/30" />
+                      <UserAvatar size="lg" />
+                      <div>
+                        <p className="text-lg font-semibold text-white"> {/* Larger text */}
+                          {user ? getUserFullName() : 'Welcome'}
+                        </p>
+                        <p className="text-sm text-slate-400">
+                          {user ? user.email : 'Sign in to continue'}
+                        </p>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-lg font-semibold text-white truncate">
-                          {getUserFullName()}
-                        </p>
-                        <p className="text-sm text-gray-400 truncate">
-                          {user.email}
-                        </p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                          <span className="text-xs text-green-400 font-medium">
-                            Online
+                    </div>
+                    <button
+                      onClick={closeAllMenus}
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300" // Larger button
+                    >
+                      <X className="w-6 h-6" /> {/* Larger icon */}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Navigation */}
+                <div className="flex-1 overflow-y-auto p-6"> {/* Larger padding */}
+                  <div className="space-y-3"> {/* Larger spacing */}
+                    {NAVIGATION_ITEMS.map((item, index) => (
+                      <NavigationLink key={item.name} item={item} isMobile={true} index={index} />
+                    ))}
+                  </div>
+
+                  {/* Additional mobile actions */}
+                  <div className="mt-8 pt-8 border-t border-slate-800/50"> {/* Larger spacing */}
+                    <div className="grid grid-cols-2 gap-3"> {/* Larger gap */}
+                      <Link
+                        href="/cart"
+                        className="p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-300 flex flex-col items-center justify-center space-y-2" // Larger padding
+                        onClick={closeAllMenus}
+                      >
+                        <ShoppingCart className="w-7 h-7 text-slate-300" /> {/* Larger icon */}
+                        <span className="text-sm text-slate-400">Cart</span>
+                        {state.itemCount > 0 && (
+                          <span className="absolute -top-2 -right-2 w-7 h-7 bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-sm font-bold rounded-full flex items-center justify-center border-2 border-slate-900">
+                            {state.itemCount}
                           </span>
-                        </div>
-                      </div>
+                        )}
+                      </Link>
+                      
+                      <Link
+                        href="/wishlist"
+                        className="p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-300 flex flex-col items-center justify-center space-y-2" // Larger padding
+                        onClick={closeAllMenus}
+                      >
+                        <Heart className="w-7 h-7 text-slate-300" /> {/* Larger icon */}
+                        <span className="text-sm text-slate-400">Wishlist</span>
+                      </Link>
                     </div>
                   </div>
-                )}
-
-                {/* Enhanced Mobile Search */}
-                <div className="px-6 mb-8 relative mobile-menu-item">
-                  <form onSubmit={handleSearchSubmit}>
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-3xl blur-lg transform scale-105" />
-                      <input
-                        type="text"
-                        placeholder="🔮 Search products..."
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                        className="relative w-full px-6 py-4 pl-12 rounded-3xl border-0 bg-black/40 dark:bg-gray-900/40 backdrop-blur-3xl shadow-2xl text-white placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-purple-500/20 transition-all duration-500 text-base font-light"
-                      />
-                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-purple-400 w-4 h-4" />
-                      {isSearching && (
-                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                          <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
-                        </div>
-                      )}
-                    </div>
-                  </form>
                 </div>
 
-                {/* Mobile Navigation Links */}
-                <div className="space-y-2 px-6 relative">
-                  {filteredNavigation.map((item, index) => (
-                    <NavigationLink key={item.name} item={item} isMobile={true} />
-                  ))}
-                </div>
-
-                {/* Mobile Action Buttons */}
-                <div className="flex items-center space-x-3 mt-8 pt-8 border-t border-white/10 px-6 relative">
+                {/* Mobile footer */}
+                <div className="p-6 border-t border-slate-800/50"> {/* Larger padding */}
                   {user ? (
-                    <>
-                      <button 
-                        onClick={() => handleMobileButton(() => router.push('/profile'))}
-                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 mobile-menu-item"
-                      >
-                        <User className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                        <span className="font-semibold text-sm">Profile</span>
-                      </button>
-                      
-                      <button 
-                        onClick={() => handleMobileButton(() => router.push('/settings'))}
-                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 mobile-menu-item"
-                      >
-                        <Settings className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                        <span className="font-semibold text-sm">Settings</span>
-                      </button>
-                      
-                      <button 
-                        onClick={() => handleMobileButton(handleLogout)}
-                        className="flex-1 flex items-center justify-center space-x-2 py-4 text-red-400 hover:text-red-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-red-500/10 group shadow-2xl border border-white/10 mobile-menu-item"
-                      >
-                        <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                        <span className="font-semibold text-sm">Logout</span>
-                      </button>
-                    </>
+                    <button
+                      onClick={() => {
+                        closeAllMenus();
+                        logout();
+                        router.push('/');
+                      }}
+                      className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-slate-800 to-slate-900 border-2 border-slate-700 text-rose-400 hover:text-rose-300 transition-all duration-300 flex items-center justify-center space-x-3" // Larger button
+                    >
+                      <LogOut className="w-5 h-5" /> {/* Larger icon */}
+                      <span className="text-base font-medium">Sign Out</span> {/* Larger text */}
+                    </button>
                   ) : (
-                    <button 
-                      onClick={() => handleMobileButton(handleAccountClick)}
-                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 mobile-menu-item"
+                    <Link
+                      href="/auth/login"
+                      className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white hover:from-blue-600 hover:to-cyan-500 transition-all duration-300 flex items-center justify-center space-x-3" // Larger button
+                      onClick={closeAllMenus}
                     >
-                      <User className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                      <span className="font-semibold text-sm">Login</span>
-                    </button>
-                  )}
-                  
-                  {/* Mobile Cart Button */}
-                  {user && (
-                    <button 
-                      onClick={() => handleNavigation('/cart')}
-                      className="flex-1 flex items-center justify-center space-x-2 py-4 text-gray-300 hover:text-purple-300 transition-all duration-500 bg-black/30 backdrop-blur-xl rounded-2xl hover:bg-purple-500/10 group shadow-2xl border border-white/10 relative mobile-menu-item"
-                    >
-                      <ShoppingCart className="w-4 h-4 group-hover:scale-110 transition-transform duration-300" />
-                      <span className="font-semibold text-sm">Cart</span>
-                      {state.itemCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-black rounded-full w-4 h-4 flex items-center justify-center shadow-2xl animate-ping">
-                          {state.itemCount}
-                        </span>
-                      )}
-                    </button>
+                      <User className="w-5 h-5" /> {/* Larger icon */}
+                      <span className="text-base font-medium">Sign In</span> {/* Larger text */}
+                    </Link>
                   )}
                 </div>
               </div>
@@ -1573,33 +1131,128 @@ export default function Header() {
         )}
       </header>
 
+      {/* Search Results Dropdown - LARGER */}
+      {showSearchResults && searchQuery.trim() && (
+        <div 
+          ref={searchContainerRef}
+          className="fixed top-20 left-1/2 transform -translate-x-1/2 w-full max-w-2xl bg-slate-900/95 backdrop-blur-xl rounded-2xl border-2 border-slate-800/50 shadow-2xl z-40 overflow-hidden mt-3" // Positioned below navbar
+        >
+          <div className="max-h-96 overflow-y-auto">
+            {searchResults.length > 0 ? (
+              <>
+                <div className="px-6 py-4 border-b border-slate-800/50"> {/* Larger padding */}
+                  <p className="text-base text-slate-400"> {/* Larger text */}
+                    Found {searchResults.length} results for "<span className="text-white">{searchQuery}</span>"
+                  </p>
+                </div>
+                
+                {searchResults.map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => {
+                      router.push(`/products/${product.slug || product.id}`);
+                      closeSearch();
+                    }}
+                    className="w-full flex items-center space-x-4 px-6 py-4 text-left hover:bg-slate-800/30 transition-all duration-300 group border-b border-slate-800/30 last:border-b-0 search-result-item" // Larger padding
+                  >
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-800/50"> {/* Larger image */}
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-medium text-white truncate"> {/* Larger text */}
+                        {product.name}
+                      </p>
+                      <div className="flex items-center space-x-3 mt-2"> {/* Larger spacing */}
+                        <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> {/* Larger text */}
+                          ${product.price}
+                        </span>
+                        {product.originalPrice && (
+                          <span className="text-sm text-slate-400 line-through"> {/* Larger text */}
+                            ${product.originalPrice}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <ChevronDown className="w-5 h-5 text-slate-400 transform -rotate-90 group-hover:translate-x-1 transition-transform duration-300" /> {/* Larger icon */}
+                  </button>
+                ))}
+              </>
+            ) : !isSearching && (
+              <div className="px-6 py-10 text-center"> {/* Larger padding */}
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-400/10 flex items-center justify-center"> {/* Larger icon container */}
+                  <Search className="w-7 h-7 text-slate-400" /> {/* Larger icon */}
+                </div>
+                <p className="text-base text-slate-300"> {/* Larger text */}
+                  No results found for "{searchQuery}"
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <style jsx global>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
-          33% { transform: translateY(-10px) rotate(120deg) scale(1.1); }
-          66% { transform: translateY(-5px) rotate(240deg) scale(0.9); }
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
         }
         
-        @keyframes bounce-scale {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.2); }
+        .animate-gradient {
+          animation: gradient 3s ease infinite;
+          background-size: 200% auto;
         }
         
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
+        /* Custom scrollbar - LARGER */
+        ::-webkit-scrollbar {
+          width: 10px;
         }
         
-        .animate-float {
-          animation: float 6s ease-in-out infinite;
+        ::-webkit-scrollbar-track {
+          background: rgba(15, 23, 42, 0.3);
         }
         
-        .animate-bounce-scale {
-          animation: bounce-scale 1s ease-in-out infinite;
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #3B82F6, #06B6D4);
+          border-radius: 5px;
         }
         
-        .animate-shimmer {
-          animation: shimmer 2s ease-in-out infinite;
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #2563EB, #0891B2);
+        }
+        
+        /* Selection color */
+        ::selection {
+          background: rgba(59, 130, 246, 0.3);
+          color: white;
+        }
+        
+        /* Smooth transitions */
+        * {
+          transition: background-color 0.3s ease, border-color 0.3s ease;
+        }
+        
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+          *, ::before, ::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
+        
+        /* Glass effect */
+        .glass-effect {
+          background: rgba(15, 23, 42, 0.7);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
       `}</style>
     </>
