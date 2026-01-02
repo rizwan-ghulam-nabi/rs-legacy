@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ShoppingCart, Search, User, Menu, X, ChevronDown, Sparkles, Star, Gem, Crown, Zap, Cloud, Clock, LogOut, Settings, Loader2, Home, Package, Layers, Mail, Heart, Bell, Sun, Moon } from 'lucide-react';
+import { ShoppingCart, Search, User, Menu, X, ChevronDown, Sparkles, Star, Gem, Crown, Zap, Cloud, Clock, LogOut, Settings, Loader2, Home, Package, Layers, Mail, Heart, Bell, Sun, Moon, LogIn } from 'lucide-react';
 import { useCart } from '../lib/cart-context';
 import { useAuth } from '../lib/auth-context';
 import { productService, Product } from '../services/productService';
@@ -80,7 +80,7 @@ const SITE_METADATA = {
 const HeaderSkeleton = memo(() => (
   <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-xl border-b border-slate-800">
     <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-      <div className="flex justify-between items-center h-20"> {/* Increased height */}
+      <div className="flex justify-between items-center h-20">
         <div className="flex items-center space-x-4">
           <div className="w-12 h-12 bg-gradient-to-r from-blue-500/20 to-cyan-400/20 rounded-xl animate-pulse" />
           <div className="hidden sm:flex flex-col">
@@ -103,7 +103,7 @@ export default function Header() {
   const { state } = useCart();
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   
   // State
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -605,6 +605,18 @@ export default function Header() {
     setTimeout(() => router.push(href), 400);
   }, [router, closeAllMenus]);
 
+  // Handle login click
+  const handleLoginClick = useCallback(() => {
+    closeAllMenus();
+    router.push('/auth/login');
+  }, [router, closeAllMenus]);
+
+  // Handle signup click
+  const handleSignupClick = useCallback(() => {
+    closeAllMenus();
+    router.push('/auth/signup');
+  }, [router, closeAllMenus]);
+
   // Memoized modern components with PROPER SIZING
   const Logo = memo(() => (
     <Link 
@@ -739,17 +751,32 @@ export default function Header() {
 
     const profileImage = getUserProfileImage();
 
-    return profileImage ? (
-      <img
-        src={profileImage}
-        alt={getUserFullName()}
-        className={`${sizeClasses[size]} rounded-full object-cover border-2 border-slate-700`}
-      />
-    ) : (
+    if (profileImage) {
+      return (
+        <img
+          src={profileImage}
+          alt={getUserFullName()}
+          className={`${sizeClasses[size]} rounded-full object-cover border-2 border-slate-700`}
+        />
+      );
+    }
+
+    if (user) {
+      return (
+        <div 
+          className={`${sizeClasses[size]} bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center text-white font-bold`}
+        >
+          {getUserInitials()}
+        </div>
+      );
+    }
+
+    // Guest avatar
+    return (
       <div 
-        className={`${sizeClasses[size]} bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full flex items-center justify-center text-white font-bold`}
+        className={`${sizeClasses[size]} bg-gradient-to-br from-slate-700 to-slate-800 rounded-full flex items-center justify-center text-slate-300 font-bold`}
       >
-        {getUserInitials()}
+        <User className="w-6 h-6" />
       </div>
     );
   });
@@ -762,7 +789,7 @@ export default function Header() {
       className="absolute top-0 left-0 right-0 z-50"
     >
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10">
-        <div className="h-20 flex items-center"> {/* Matches navbar height */}
+        <div className="h-20 flex items-center">
           <form 
             onSubmit={handleSearchSubmit} 
             className="w-full relative"
@@ -776,15 +803,15 @@ export default function Header() {
                 placeholder="Search products, brands, collections..."
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="relative w-full px-6 py-4 pl-14 pr-14 rounded-2xl border-2 border-slate-700/50 bg-slate-900/80 backdrop-blur-xl text-white placeholder-slate-400 focus:outline-none focus:ring-3 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all duration-300 text-base" // Larger text and padding
+                className="relative w-full px-6 py-4 pl-14 pr-14 rounded-2xl border-2 border-slate-700/50 bg-slate-900/80 backdrop-blur-xl text-white placeholder-slate-400 focus:outline-none focus:ring-3 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all duration-300 text-base"
                 autoFocus
               />
               
-              <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" /> {/* Larger icon */}
+              <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
               
               {isSearching && (
                 <div className="absolute right-14 top-1/2 transform -translate-y-1/2">
-                  <div className="w-5 h-5 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" /> {/* Larger spinner */}
+                  <div className="w-5 h-5 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
                 </div>
               )}
               
@@ -793,7 +820,7 @@ export default function Header() {
                 onClick={closeSearch}
                 className="absolute right-6 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-400 hover:text-white transition-colors duration-200"
               >
-                <X className="w-5 h-5" /> {/* Larger icon */}
+                <X className="w-5 h-5" />
               </button>
             </div>
           </form>
@@ -805,13 +832,13 @@ export default function Header() {
   SearchInterface.displayName = 'SearchInterface';
 
   const ScrollProgress = memo(() => (
-    <div ref={scrollProgressRef} className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-400" /> // Thicker progress bar
+    <div ref={scrollProgressRef} className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-400" />
   ));
 
   ScrollProgress.displayName = 'ScrollProgress';
 
   // Loading state
-  if (!isClient) {
+  if (!isClient || isLoading) {
     return <HeaderSkeleton />;
   }
 
@@ -859,7 +886,7 @@ export default function Header() {
       {/* MAIN HEADER - PROPER HEIGHT */}
       <header 
         ref={headerRef}
-        className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/50 transition-all duration-500 h-20" // Fixed proper height
+        className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/50 transition-all duration-500 h-20"
         style={{
           '--scroll-progress': scrollProgress
         } as React.CSSProperties}
@@ -867,14 +894,14 @@ export default function Header() {
         {/* Scroll Progress Indicator */}
         <ScrollProgress />
 
-        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 relative h-full"> {/* Added h-full */}
-          <div className="flex justify-between items-center h-full"> {/* Changed to h-full */}
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-10 relative h-full">
+          <div className="flex justify-between items-center h-full">
             {/* Logo */}
             <Logo />
 
             {/* Desktop Navigation */}
             {!isSearchOpen && (
-              <nav className="hidden lg:flex items-center space-x-2"> {/* Increased spacing */}
+              <nav className="hidden lg:flex items-center space-x-2">
                 {NAVIGATION_ITEMS.map((item, index) => (
                   <NavigationLink key={item.name} item={item} index={index} />
                 ))}
@@ -904,41 +931,39 @@ export default function Header() {
                 className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300"
                 aria-label="Search"
               >
-                <Search className="w-5 h-5" /> {/* Larger icon */}
+                <Search className="w-5 h-5" />
               </button>
 
-              {/* Notifications */}
-              {user && (
-                <button className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300 relative">
-                  <Bell className="w-5 h-5" /> {/* Larger icon */}
-                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-rose-500 rounded-full animate-pulse" /> {/* Larger dot */}
-                </button>
-              )}
+              {/* Cart - Visible for both logged in and guest users */}
+              <Link
+                href="/cart"
+                className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300 relative"
+                data-cart-button
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {state.itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-slate-900">
+                    {state.itemCount}
+                  </span>
+                )}
+              </Link>
 
-              {/* Wishlist */}
+              {/* Wishlist - Only for logged in users */}
               {user && (
                 <Link
                   href="/wishlist"
                   className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300"
                 >
-                  <Heart className="w-5 h-5" /> {/* Larger icon */}
+                  <Heart className="w-5 h-5" />
                 </Link>
               )}
 
-              {/* Cart */}
+              {/* Notifications - Only for logged in users */}
               {user && (
-                <Link
-                  href="/cart"
-                  className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300 relative"
-                  data-cart-button
-                >
-                  <ShoppingCart className="w-5 h-5" /> {/* Larger icon */}
-                  {state.itemCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-6 h-6 bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-slate-900"> {/* Larger badge */}
-                      {state.itemCount}
-                    </span>
-                  )}
-                </Link>
+                <button className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300 relative">
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-rose-500 rounded-full animate-pulse" />
+                </button>
               )}
 
               {/* User Menu */}
@@ -946,6 +971,7 @@ export default function Header() {
                 <button
                   onClick={toggleUserDropdown}
                   className="flex items-center space-x-3 p-1.5 rounded-xl hover:bg-slate-800/50 transition-all duration-300"
+                  aria-label="User menu"
                 >
                   <UserAvatar size="md" />
                   <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${
@@ -953,60 +979,112 @@ export default function Header() {
                   }`} />
                 </button>
 
-                {isUserDropdownOpen && user && (
-                  <div className="absolute right-0 mt-3 w-72 bg-slate-900/95 backdrop-blur-xl rounded-2xl border-2 border-slate-800/50 shadow-2xl shadow-black/30 py-3 z-50 overflow-hidden"> {/* Larger width */}
-                    {/* User info with gradient */}
-                    <div className="px-5 py-4 border-b border-slate-800/50 bg-gradient-to-r from-slate-900/50 to-transparent"> {/* Larger padding */}
-                      <div className="flex items-center space-x-4">
-                        <UserAvatar size="lg" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-base font-semibold text-white truncate"> {/* Larger text */}
-                            {getUserFullName()}
-                          </p>
-                          <p className="text-sm text-slate-400 truncate"> {/* Larger text */}
-                            {user.email}
-                          </p>
-                          <div className="flex items-center space-x-2 mt-2">
-                            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                            <span className="text-sm text-emerald-400">Online</span>
+                {isUserDropdownOpen && (
+                  <div className="absolute right-0 mt-3 w-72 bg-slate-900/95 backdrop-blur-xl rounded-2xl border-2 border-slate-800/50 shadow-2xl shadow-black/30 py-3 z-50 overflow-hidden">
+                    {user ? (
+                      // Logged-in user menu
+                      <>
+                        <div className="px-5 py-4 border-b border-slate-800/50 bg-gradient-to-r from-slate-900/50 to-transparent">
+                          <div className="flex items-center space-x-4">
+                            <UserAvatar size="lg" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-base font-semibold text-white truncate">
+                                {getUserFullName()}
+                              </p>
+                              <p className="text-sm text-slate-400 truncate">
+                                {user.email}
+                              </p>
+                              <div className="flex items-center space-x-2 mt-2">
+                                <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                                <span className="text-sm text-emerald-400">Online</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
 
-                    <div className="py-2">
-                      <Link
-                        href="/profile"
-                        className="flex items-center space-x-3 px-5 py-3 text-base text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-300 group" // Larger text and padding
-                        onClick={() => setIsUserDropdownOpen(false)}
-                      >
-                        <User className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" /> {/* Larger icon */}
-                        <span>Profile</span>
-                      </Link>
-                      
-                      <Link
-                        href="/settings"
-                        className="flex items-center space-x-3 px-5 py-3 text-base text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-300 group" // Larger text and padding
-                        onClick={() => setIsUserDropdownOpen(false)}
-                      >
-                        <Settings className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" /> {/* Larger icon */}
-                        <span>Settings</span>
-                      </Link>
-                      
-                      <div className="border-t border-slate-800/50 my-2" />
-                      
-                      <button
-                        onClick={() => {
-                          setIsUserDropdownOpen(false);
-                          logout();
-                          router.push('/');
-                        }}
-                        className="w-full flex items-center space-x-3 px-5 py-3 text-base text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all duration-300 group" // Larger text and padding
-                      >
-                        <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" /> {/* Larger icon */}
-                        <span>Sign Out</span>
-                      </button>
-                    </div>
+                        <div className="py-2">
+                          <Link
+                            href="/profile"
+                            className="flex items-center space-x-3 px-5 py-3 text-base text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-300 group"
+                            onClick={() => setIsUserDropdownOpen(false)}
+                          >
+                            <User className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                            <span>Profile</span>
+                          </Link>
+                          
+                          <Link
+                            href="/settings"
+                            className="flex items-center space-x-3 px-5 py-3 text-base text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-300 group"
+                            onClick={() => setIsUserDropdownOpen(false)}
+                          >
+                            <Settings className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                            <span>Settings</span>
+                          </Link>
+                          
+                          <div className="border-t border-slate-800/50 my-2" />
+                          
+                          <button
+                            onClick={() => {
+                              setIsUserDropdownOpen(false);
+                              logout();
+                              router.push('/');
+                            }}
+                            className="w-full flex items-center space-x-3 px-5 py-3 text-base text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all duration-300 group"
+                          >
+                            <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                            <span>Sign Out</span>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      // Guest user menu with login/signup options
+                      <>
+                        <div className="px-5 py-4 border-b border-slate-800/50">
+                          <p className="text-base font-semibold text-white">
+                            Welcome to RS-LEGACY
+                          </p>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Sign in to access your account
+                          </p>
+                        </div>
+
+                        <div className="py-2">
+                          <button
+                            onClick={handleLoginClick}
+                            className="w-full flex items-center space-x-3 px-5 py-3 text-base text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-300 group"
+                          >
+                            <LogIn className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                            <span>Sign In</span>
+                          </button>
+                          
+                          <button
+                            onClick={handleSignupClick}
+                            className="w-full flex items-center space-x-3 px-5 py-3 text-base text-white hover:bg-blue-500/10 transition-all duration-300 group mt-2"
+                          >
+                            <User className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                            <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                              Create Account
+                            </span>
+                          </button>
+                          
+                          <div className="border-t border-slate-800/50 my-2" />
+                          
+                          <Link
+                            href="/cart"
+                            className="flex items-center space-x-3 px-5 py-3 text-base text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all duration-300 group"
+                            onClick={() => setIsUserDropdownOpen(false)}
+                          >
+                            <ShoppingCart className="w-5 h-5 group-hover:scale-110 transition-transform duration-300" />
+                            <span>View Cart</span>
+                            {state.itemCount > 0 && (
+                              <span className="ml-auto w-6 h-6 bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                                {state.itemCount}
+                              </span>
+                            )}
+                          </Link>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -1017,7 +1095,7 @@ export default function Header() {
                 className="lg:hidden w-11 h-11 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300"
                 aria-label="Menu"
               >
-                <Menu className="w-6 h-6" /> {/* Larger icon */}
+                <Menu className="w-6 h-6" />
               </button>
             </div>
           </div>
@@ -1037,16 +1115,16 @@ export default function Header() {
             
             <div 
               ref={mobileMenuRef}
-              className="lg:hidden fixed inset-y-0 right-0 w-96 bg-slate-900/95 backdrop-blur-xl border-l-2 border-slate-800/50 shadow-2xl z-50" // Wider mobile menu
+              className="lg:hidden fixed inset-y-0 right-0 w-96 bg-slate-900/95 backdrop-blur-xl border-l-2 border-slate-800/50 shadow-2xl z-50"
             >
               <div className="h-full flex flex-col">
                 {/* Mobile header */}
-                <div className="p-8 border-b border-slate-800/50"> {/* Larger padding */}
+                <div className="p-8 border-b border-slate-800/50">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
                       <UserAvatar size="lg" />
                       <div>
-                        <p className="text-lg font-semibold text-white"> {/* Larger text */}
+                        <p className="text-lg font-semibold text-white">
                           {user ? getUserFullName() : 'Welcome'}
                         </p>
                         <p className="text-sm text-slate-400">
@@ -1056,30 +1134,30 @@ export default function Header() {
                     </div>
                     <button
                       onClick={closeAllMenus}
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300" // Larger button
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-300"
                     >
-                      <X className="w-6 h-6" /> {/* Larger icon */}
+                      <X className="w-6 h-6" />
                     </button>
                   </div>
                 </div>
 
                 {/* Navigation */}
-                <div className="flex-1 overflow-y-auto p-6"> {/* Larger padding */}
-                  <div className="space-y-3"> {/* Larger spacing */}
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="space-y-3">
                     {NAVIGATION_ITEMS.map((item, index) => (
                       <NavigationLink key={item.name} item={item} isMobile={true} index={index} />
                     ))}
                   </div>
 
                   {/* Additional mobile actions */}
-                  <div className="mt-8 pt-8 border-t border-slate-800/50"> {/* Larger spacing */}
-                    <div className="grid grid-cols-2 gap-3"> {/* Larger gap */}
+                  <div className="mt-8 pt-8 border-t border-slate-800/50">
+                    <div className="grid grid-cols-2 gap-3">
                       <Link
                         href="/cart"
-                        className="p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-300 flex flex-col items-center justify-center space-y-2" // Larger padding
+                        className="p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-300 flex flex-col items-center justify-center space-y-2 relative"
                         onClick={closeAllMenus}
                       >
-                        <ShoppingCart className="w-7 h-7 text-slate-300" /> {/* Larger icon */}
+                        <ShoppingCart className="w-7 h-7 text-slate-300" />
                         <span className="text-sm text-slate-400">Cart</span>
                         {state.itemCount > 0 && (
                           <span className="absolute -top-2 -right-2 w-7 h-7 bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-sm font-bold rounded-full flex items-center justify-center border-2 border-slate-900">
@@ -1088,20 +1166,32 @@ export default function Header() {
                         )}
                       </Link>
                       
-                      <Link
-                        href="/wishlist"
-                        className="p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-300 flex flex-col items-center justify-center space-y-2" // Larger padding
-                        onClick={closeAllMenus}
-                      >
-                        <Heart className="w-7 h-7 text-slate-300" /> {/* Larger icon */}
-                        <span className="text-sm text-slate-400">Wishlist</span>
-                      </Link>
+                      {user && (
+                        <Link
+                          href="/wishlist"
+                          className="p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-300 flex flex-col items-center justify-center space-y-2"
+                          onClick={closeAllMenus}
+                        >
+                          <Heart className="w-7 h-7 text-slate-300" />
+                          <span className="text-sm text-slate-400">Wishlist</span>
+                        </Link>
+                      )}
+                      
+                      {!user && (
+                        <button
+                          onClick={handleSignupClick}
+                          className="p-4 rounded-xl bg-gradient-to-r from-blue-500/10 to-cyan-400/10 hover:from-blue-500/20 hover:to-cyan-400/20 transition-all duration-300 flex flex-col items-center justify-center space-y-2"
+                        >
+                          <User className="w-7 h-7 text-blue-400" />
+                          <span className="text-sm text-blue-400">Sign Up</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Mobile footer */}
-                <div className="p-6 border-t border-slate-800/50"> {/* Larger padding */}
+                <div className="p-6 border-t border-slate-800/50">
                   {user ? (
                     <button
                       onClick={() => {
@@ -1109,20 +1199,19 @@ export default function Header() {
                         logout();
                         router.push('/');
                       }}
-                      className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-slate-800 to-slate-900 border-2 border-slate-700 text-rose-400 hover:text-rose-300 transition-all duration-300 flex items-center justify-center space-x-3" // Larger button
+                      className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-slate-800 to-slate-900 border-2 border-slate-700 text-rose-400 hover:text-rose-300 transition-all duration-300 flex items-center justify-center space-x-3"
                     >
-                      <LogOut className="w-5 h-5" /> {/* Larger icon */}
-                      <span className="text-base font-medium">Sign Out</span> {/* Larger text */}
+                      <LogOut className="w-5 h-5" />
+                      <span className="text-base font-medium">Sign Out</span>
                     </button>
                   ) : (
-                    <Link
-                      href="/auth/login"
-                      className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white hover:from-blue-600 hover:to-cyan-500 transition-all duration-300 flex items-center justify-center space-x-3" // Larger button
-                      onClick={closeAllMenus}
+                    <button
+                      onClick={handleLoginClick}
+                      className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white hover:from-blue-600 hover:to-cyan-500 transition-all duration-300 flex items-center justify-center space-x-3"
                     >
-                      <User className="w-5 h-5" /> {/* Larger icon */}
-                      <span className="text-base font-medium">Sign In</span> {/* Larger text */}
-                    </Link>
+                      <LogIn className="w-5 h-5" />
+                      <span className="text-base font-medium">Sign In</span>
+                    </button>
                   )}
                 </div>
               </div>
@@ -1135,13 +1224,13 @@ export default function Header() {
       {showSearchResults && searchQuery.trim() && (
         <div 
           ref={searchContainerRef}
-          className="fixed top-20 left-1/2 transform -translate-x-1/2 w-full max-w-2xl bg-slate-900/95 backdrop-blur-xl rounded-2xl border-2 border-slate-800/50 shadow-2xl z-40 overflow-hidden mt-3" // Positioned below navbar
+          className="fixed top-20 left-1/2 transform -translate-x-1/2 w-full max-w-2xl bg-slate-900/95 backdrop-blur-xl rounded-2xl border-2 border-slate-800/50 shadow-2xl z-40 overflow-hidden mt-3"
         >
           <div className="max-h-96 overflow-y-auto">
             {searchResults.length > 0 ? (
               <>
-                <div className="px-6 py-4 border-b border-slate-800/50"> {/* Larger padding */}
-                  <p className="text-base text-slate-400"> {/* Larger text */}
+                <div className="px-6 py-4 border-b border-slate-800/50">
+                  <p className="text-base text-slate-400">
                     Found {searchResults.length} results for "<span className="text-white">{searchQuery}</span>"
                   </p>
                 </div>
@@ -1153,9 +1242,9 @@ export default function Header() {
                       router.push(`/products/${product.slug || product.id}`);
                       closeSearch();
                     }}
-                    className="w-full flex items-center space-x-4 px-6 py-4 text-left hover:bg-slate-800/30 transition-all duration-300 group border-b border-slate-800/30 last:border-b-0 search-result-item" // Larger padding
+                    className="w-full flex items-center space-x-4 px-6 py-4 text-left hover:bg-slate-800/30 transition-all duration-300 group border-b border-slate-800/30 last:border-b-0 search-result-item"
                   >
-                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-800/50"> {/* Larger image */}
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-800/50">
                       <img
                         src={product.image}
                         alt={product.name}
@@ -1164,31 +1253,31 @@ export default function Header() {
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <p className="text-base font-medium text-white truncate"> {/* Larger text */}
+                      <p className="text-base font-medium text-white truncate">
                         {product.name}
                       </p>
-                      <div className="flex items-center space-x-3 mt-2"> {/* Larger spacing */}
-                        <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"> {/* Larger text */}
+                      <div className="flex items-center space-x-3 mt-2">
+                        <span className="text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
                           ${product.price}
                         </span>
                         {product.originalPrice && (
-                          <span className="text-sm text-slate-400 line-through"> {/* Larger text */}
+                          <span className="text-sm text-slate-400 line-through">
                             ${product.originalPrice}
                           </span>
                         )}
                       </div>
                     </div>
                     
-                    <ChevronDown className="w-5 h-5 text-slate-400 transform -rotate-90 group-hover:translate-x-1 transition-transform duration-300" /> {/* Larger icon */}
+                    <ChevronDown className="w-5 h-5 text-slate-400 transform -rotate-90 group-hover:translate-x-1 transition-transform duration-300" />
                   </button>
                 ))}
               </>
             ) : !isSearching && (
-              <div className="px-6 py-10 text-center"> {/* Larger padding */}
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-400/10 flex items-center justify-center"> {/* Larger icon container */}
-                  <Search className="w-7 h-7 text-slate-400" /> {/* Larger icon */}
+              <div className="px-6 py-10 text-center">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-blue-500/10 to-cyan-400/10 flex items-center justify-center">
+                  <Search className="w-7 h-7 text-slate-400" />
                 </div>
-                <p className="text-base text-slate-300"> {/* Larger text */}
+                <p className="text-base text-slate-300">
                   No results found for "{searchQuery}"
                 </p>
               </div>
